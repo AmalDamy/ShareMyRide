@@ -37,7 +37,7 @@ if (!isset($_SESSION['user_id'])) {
         </div>
     </nav>
 
-    <div class="container" style="margin-top: 2rem;">
+    <div class="container" style="padding-top: 6rem;">
         
         <!-- Search Bar (Compact) -->
         <div class="search-card" style="padding: 1rem 1.5rem; margin-bottom: 2rem; box-shadow: var(--shadow-sm); border: 1px solid #eee;">
@@ -74,12 +74,7 @@ if (!isset($_SESSION['user_id'])) {
 
     </div>
 
-    <!-- Footer same as index (simplified) -->
-    <footer class="footer" style="margin-top: 5rem;">
-        <div class="container">
-            <p class="text-center" style="font-size: 0.9rem;">&copy; 2025 ShareMyRide.</p>
-        </div>
-    </footer>
+
 
     <!-- Request Ride Modal -->
     <div id="requestModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(5px);">
@@ -157,39 +152,6 @@ if (!isset($_SESSION['user_id'])) {
             document.getElementById('navLinks').classList.toggle('show');
         }
 
-        function validateSearch() {
-            const from = document.getElementById('searchFrom').value.trim();
-            const to = document.getElementById('searchTo').value.trim();
-            const date = document.getElementById('searchDate').value;
-            
-            const locationRegex = /[a-zA-Z]/;
-
-            if (from && !locationRegex.test(from)) {
-                alert("Please enter a valid starting location (must contain letters).");
-                return false;
-            }
-            if (to && !locationRegex.test(to)) {
-                 alert("Please enter a valid destination (must contain letters).");
-                 return false;
-            }
-
-            if (from && to && from.toLowerCase() === to.toLowerCase()) {
-                alert("Pickup and Destination cannot be the same!");
-                return false;
-            }
-            
-            if (date) {
-                const selected = new Date(date);
-                const today = new Date();
-                today.setHours(0,0,0,0);
-                if (selected < today) {
-                    alert("Please select a valid date (today or future).");
-                    return false;
-                }
-            }
-            return true;
-        }
-
         // Initial Load
         window.addEventListener('load', () => {
              // Check URL params for search
@@ -204,7 +166,93 @@ if (!isset($_SESSION['user_id'])) {
             } else {
                 renderRides(from || '', to || '', date || '');
             }
+
+            // Real-time Search Listeners with Debounce
+            const inputs = ['searchFrom', 'searchTo', 'searchDate'];
+            let debounceTimer;
+
+            inputs.forEach(id => {
+                document.getElementById(id).addEventListener('input', () => {
+                    clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => {
+                         // Validate first
+                        const isValid = validateSearch(false);
+                        const fromVal = document.getElementById('searchFrom').value.trim();
+                        const toVal = document.getElementById('searchTo').value.trim();
+                        
+                        // If invalid (e.g. numbers only), we should probably clear results or show specific error state
+                        // But validateSearch returns false if regex fails.
+                        
+                        if(isValid) {
+                            const dateVal = document.getElementById('searchDate').value;
+                            renderRides(fromVal, toVal, dateVal);
+                        } else {
+                            // If invalid input (like numbers), show empty/error state
+                             // specific check for number-only spam
+                             const locationRegex = /[a-zA-Z]/;
+                             if ( (fromVal && !locationRegex.test(fromVal)) || (toVal && !locationRegex.test(toVal)) ) {
+                                 const container = document.getElementById('ridesGrid');
+                                 container.innerHTML = `
+                                    <div style="text-align: center; padding: 4rem;">
+                                        <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #f59e0b; margin-bottom: 1rem;"></i>
+                                        <p style="color: var(--text-gray);">Please enter a valid location (must contain letters).</p>
+                                    </div>`;
+                             }
+                        }
+                    }, 300); // 300ms delay
+                });
+            });
         });
+
+        function validateSearch(showAlerts = true) {
+            const fromInput = document.getElementById('searchFrom');
+            const toInput = document.getElementById('searchTo');
+            const dateInput = document.getElementById('searchDate');
+
+            const from = fromInput.value.trim();
+            const to = toInput.value.trim();
+            const date = dateInput.value;
+            
+            // Allow empty for "show all" logic, but if typed, check regex
+            const locationRegex = /[a-zA-Z]/;
+            let valid = true;
+
+            // Reset classes
+            fromInput.classList.remove('input-error');
+            toInput.classList.remove('input-error');
+            dateInput.classList.remove('input-error');
+
+            // Only validate formatting if something is typed
+            if (from && !locationRegex.test(from)) {
+                if(showAlerts) alert("Please enter a valid starting location (must contain letters).");
+                fromInput.classList.add('input-error');
+                valid = false;
+            }
+            if (to && !locationRegex.test(to)) {
+                 if(showAlerts) alert("Please enter a valid destination (must contain letters).");
+                 toInput.classList.add('input-error');
+                 valid = false;
+            }
+
+            if (from && to && from.toLowerCase() === to.toLowerCase()) {
+                if(showAlerts) alert("Pickup and Destination cannot be the same!");
+                fromInput.classList.add('input-error');
+                toInput.classList.add('input-error');
+                valid = false;
+            }
+            
+            if (date) {
+                const selected = new Date(date);
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                if (selected < today) {
+                    if(showAlerts) alert("Please select a valid date (today or future).");
+                    dateInput.classList.add('input-error');
+                    valid = false;
+                }
+            }
+            return valid;
+        }
 
         async function renderRides(filterFrom, filterTo, filterDate) {
             const container = document.getElementById('ridesGrid');

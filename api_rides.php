@@ -53,16 +53,27 @@ if ($method === 'GET') {
 
     // Filter by Driver (My Rides)
     $driver_filter = $_GET['driver_id'] ?? '';
+    // Flag to skip exclusion if we are explicitly asking for our own rides
+    $is_fetching_mine = false; 
+
     if (!empty($driver_filter)) {
         if ($driver_filter === 'me' && isset($_SESSION['user_id'])) {
             $sql .= " AND r.driver_id = ?";
             $params[] = $_SESSION['user_id'];
             $types .= "i";
+            $is_fetching_mine = true;
         } elseif (is_numeric($driver_filter)) {
             $sql .= " AND r.driver_id = ?";
             $params[] = $driver_filter;
             $types .= "i";
         }
+    }
+
+    // Exclude my own rides if I'm not explicitly looking for them
+    if (!$is_fetching_mine && isset($_SESSION['user_id'])) {
+        $sql .= " AND r.driver_id != ?";
+        $params[] = $_SESSION['user_id'];
+        $types .= "i";
     }
     
     // Check for specific ride_id (Bypass type filter if ID provided)
@@ -141,6 +152,71 @@ if ($method === 'GET') {
             echo json_encode(['success'=>true, 'message'=>'Ride completed']);
         } else {
             echo json_encode(['success'=>false, 'message'=>'Update failed']);
+        }
+
+    // ACTION: DELETE RIDE
+    } elseif ($action === 'delete') {
+        $ride_id = $input['ride_id'] ?? 0;
+        $driver_id = $_SESSION['user_id'];
+        
+        // Validate Ownership
+        $check = $conn->prepare("SELECT ride_id FROM rides WHERE ride_id = ? AND driver_id = ?");
+        $check->bind_param("ii", $ride_id, $driver_id);
+        $check->execute();
+        
+        if($check->get_result()->num_rows === 0) {
+            echo json_encode(['success'=>false, 'message'=>'Unauthorized or Ride not found']);
+            exit;
+        }
+        
+        // Soft delete (Cancel)
+        $upd = $conn->prepare("UPDATE rides SET status = 'cancelled' WHERE ride_id = ?");
+        $upd->bind_param("i", $ride_id);
+        
+        if($upd->execute()) {
+            // Cancel pending requests
+            $conn->query("UPDATE ride_requests SET status = 'rejected' WHERE ride_id = $ride_id AND status = 'pending'");
+            echo json_encode(['success'=>true, 'message'=>'Ride deleted']);
+        } else {
+            echo json_encode(['success'=>false, 'message'=>'Delete failed']);
+        }
+
+    // ACTION: UPDATE RIDE
+    } elseif ($action === 'update') {
+        $ride_id = $input['ride_id'] ?? 0;
+        $driver_id = $_SESSION['user_id'];
+
+        // Validate Ownership
+        $check = $conn->prepare("SELECT ride_id FROM rides WHERE ride_id = ? AND driver_id = ?");
+        $check->bind_param("ii", $ride_id, $driver_id);
+        $check->execute();
+        
+        if($check->get_result()->num_rows === 0) {
+            echo json_encode(['success'=>false, 'message'=>'Unauthorized or Ride not found']);
+            exit;
+        }
+        
+        // Update fields
+        $from = $input['from'] ?? '';
+        $to = $input['to'] ?? '';
+        $date = $input['date'] ?? '';
+        $time = $input['time'] ?? '';
+        $seats = $input['seats'] ?? 1;
+        $price = $input['price'] ?? 0;
+        $vehicle = $input['vehicle'] ?? '';
+        $details = $input['details'] ?? '';
+        
+        // Optional: Block update if there are accepted requests (to avoid conflict)
+        // For now, we allow it but it might be good to restrict fundamental changes if bookings exist.
+        
+        $sql = "UPDATE rides SET from_location=?, to_location=?, ride_date=?, ride_time=?, seats_available=?, price_per_seat=?, vehicle_type=?, details=? WHERE ride_id=?";
+        $upd = $conn->prepare($sql);
+        $upd->bind_param("ssssidssi", $from, $to, $date, $time, $seats, $price, $vehicle, $details, $ride_id);
+        
+        if($upd->execute()) {
+             echo json_encode(['success'=>true, 'message'=>'Ride updated successfully']);
+        } else {
+             echo json_encode(['success'=>false, 'message'=>'Update failed: '.$conn->error]);
         }
 
     // ACTION: CREATE RIDE (Default)

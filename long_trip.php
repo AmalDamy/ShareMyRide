@@ -39,7 +39,7 @@ if (!isset($_SESSION['user_id'])) {
     </nav>
 
     <!-- Page Header -->
-    <div style="background: linear-gradient(135deg, var(--primary-teal), var(--dark-teal)); color: white; padding: 4rem 0 3rem; text-align: center;">
+    <div style="background: linear-gradient(135deg, var(--primary-teal), var(--dark-teal)); color: white; padding: 8rem 0 3rem; text-align: center;">
         <div class="container">
             <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">Plan Your Long Trip</h1>
             <p style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 2rem;">Weekend getaways, holiday trips, or hometown visits - share the journey, split the costs!</p>

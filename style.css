@@ -165,20 +165,19 @@ ul {
 
 /* Navbar */
 .navbar {
-    background-color: transparent;
+    background-color: #ffffff;
     transition: background-color 0.3s;
-    position: sticky;
+    position: fixed;
+    width: 100%;
+    left: 0;
     top: 0;
     z-index: 1000;
-    padding: 1.25rem 0;
+    padding: 1rem 0;
+    box-shadow: var(--shadow-sm);
 }
 
 .navbar.scrolled {
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: var(--shadow-sm);
-    padding: 1rem 0;
+    box-shadow: var(--shadow-md);
 }
 
 .nav-content {
@@ -636,8 +635,8 @@ ul {
     display: block;
 }
 
-.form-input.error {
-    border-color: var(--error-red);
+.form-input.error, .input-error {
+    border-color: var(--error-red) !important;
     background-color: #fef2f2;
 }
 

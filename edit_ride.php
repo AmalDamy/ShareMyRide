@@ -5,14 +5,20 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
+
+$rideId = $_GET['id'] ?? null;
+if (!$rideId) {
+    header("Location: dashboard.php");
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Offer a Ride - ShareMyRide</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Edit Ride - ShareMyRide</title>
+    <link rel="stylesheet" href="style.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -25,9 +31,6 @@ if (!isset($_SESSION['user_id'])) {
                 <a href="dashboard.php" style="color: var(--primary-teal); font-weight: 700;">Dashboard</a>
                 <a href="find_ride.php">Find Ride</a>
                 <a href="offer_ride.php">Offer Ride</a>
-                <a href="long_trip.php">Long Trip</a>
-                <a href="fuel_calculator.php">Fuel Calculator</a>
-                <a href="contact.php">Contact</a>
                 <a href="logout.php" style="color: var(--error-red); font-weight: 600;"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
             <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
@@ -39,12 +42,19 @@ if (!isset($_SESSION['user_id'])) {
     <div class="container" style="padding-top: 7rem; max-width: 800px;">
         
         <div class="text-center mb-4">
-            <h1 style="font-size: 2rem; font-weight: 800; color: var(--text-dark);">Publish a Ride</h1>
-            <p style="color: var(--text-gray);">Cover your driving costs by sharing your empty seats.</p>
+            <h1 style="font-size: 2rem; font-weight: 800; color: var(--text-dark);">Edit Ride</h1>
+            <p style="color: var(--text-gray);">Update details for your upcoming trip.</p>
         </div>
 
-        <div class="search-card" style="display: block; padding: 2.5rem; border-top: 4px solid var(--primary-teal);">
-            <form id="rideForm" onsubmit="handleRideSubmit(event)">
+        <div class="search-card" style="display: block; padding: 2.5rem; border-top: 4px solid var(--accent-yellow);">
+            <div id="loading" style="text-align:center; padding: 2rem;">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                <p>Loading details...</p>
+            </div>
+
+            <form id="rideForm" onsubmit="handleRideSubmit(event)" style="display:none;">
+                <input type="hidden" id="rideId" value="<?php echo htmlspecialchars($rideId); ?>">
+                
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                     <div class="form-group">
                         <label>From *</label>
@@ -108,9 +118,12 @@ if (!isset($_SESSION['user_id'])) {
                 <!-- Global message container for success/network errors -->
                 <div id="rideFormMessage"></div>
 
-                <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 1rem;">
-                    <i class="fas fa-check-circle"></i> Publish Ride
-                </button>
+                <div style="display:flex; justify-content:space-between; gap: 1rem;">
+                    <button type="button" onclick="window.history.back()" class="btn btn-outline" style="flex:1;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="flex:2;">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
 
             </form>
         </div>
@@ -123,8 +136,37 @@ if (!isset($_SESSION['user_id'])) {
             document.getElementById('navLinks').classList.toggle('show');
         }
 
-        // Set minimum date to today
-        document.getElementById('offerDate').min = new Date().toISOString().split('T')[0];
+        const rideId = document.getElementById('rideId').value;
+        const form = document.getElementById('rideForm');
+        const loader = document.getElementById('loading');
+
+        // Load Ride Details
+        window.addEventListener('load', async () => {
+            try {
+                const res = await fetch(`api_rides.php?ride_id=${rideId}`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    const ride = data.ride;
+                    document.getElementById('offerFrom').value = ride.from_location;
+                    document.getElementById('offerTo').value = ride.to_location;
+                    document.getElementById('offerDate').value = ride.ride_date;
+                    document.getElementById('offerTime').value = ride.ride_time.substring(0,5); // Trim seconds
+                    document.getElementById('vehicleType').value = ride.vehicle_type;
+                    document.getElementById('offerSeats').value = ride.seats_available;
+                    document.getElementById('offerPrice').value = ride.price_per_seat;
+                    document.getElementById('offerDetails').value = ride.details;
+                    
+                    loader.style.display = 'none';
+                    form.style.display = 'block';
+                } else {
+                    loader.innerHTML = '<p class="text-error">Ride not found.</p>';
+                }
+            } catch (e) {
+                console.error(e);
+                loader.innerHTML = '<p class="text-error">Error loading ride details.</p>';
+            }
+        });
 
         // Helper to show inline error
         function showError(fieldId, errorId, message) {
@@ -159,110 +201,44 @@ if (!isset($_SESSION['user_id'])) {
             const vehicle = document.getElementById('vehicleType').value;
             const seats = document.getElementById('offerSeats').value;
             const price = document.getElementById('offerPrice').value;
+            const details = document.getElementById('offerDetails').value;
 
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            // Regex: Must contain at least one letter
-            const locationRegex = /[a-zA-Z]/;
-
-            // Validate From
-            if (!from) {
-                showError('offerFrom', 'errorFrom', 'Please enter starting location');
-                hasError = true;
-            } else if (!locationRegex.test(from)) {
-                showError('offerFrom', 'errorFrom', 'Location must contain letters');
-                hasError = true;
+            // Simplified Validation for Edit
+            if (!from || !to || !date || !time || !vehicle || !seats || !price) {
+                 alert("Please fill all required fields");
+                 return;
             }
 
-            // Validate To
-            if (!to) {
-                showError('offerTo', 'errorTo', 'Please enter destination');
-                hasError = true;
-            } else if (!locationRegex.test(to)) {
-                showError('offerTo', 'errorTo', 'Destination must contain letters');
-                hasError = true;
-            } else if (from.toLowerCase() === to.toLowerCase()) {
-                showError('offerTo', 'errorTo', 'Destination cannot be same as start');
-                hasError = true;
-            }
-
-            // Validate Date
-            if (!date) {
-                showError('offerDate', 'errorDate', 'Please select date');
-                hasError = true;
-            } else {
-                const selectedDate = new Date(date);
-                if (selectedDate < today) {
-                    showError('offerDate', 'errorDate', 'Date cannot be in the past');
-                    hasError = true;
-                }
-            }
-            
-            // Validate Time
-            if (!time) {
-                showError('offerTime', 'errorTime', 'Please select time');
-                hasError = true;
-            }
-            
-            // Validate Vehicle
-            if (!vehicle) {
-                showError('vehicleType', 'errorVehicle', 'Please select a vehicle');
-                hasError = true;
-            }
-
-            // Validate Seats
-            if (!seats || parseInt(seats) < 1) {
-                showError('offerSeats', 'errorSeats', 'At least 1 seat required');
-                hasError = true;
-            }
-
-            // Validate Price
-            if (!price || parseInt(price) < 0) {
-                showError('offerPrice', 'errorPrice', 'Invalid price');
-                hasError = true;
-            }
-            
-            if (hasError) return;
-            
-            // Show loading state
+            // Show loading
             const btn = e.target.querySelector('button[type="submit"]');
             const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             btn.disabled = true;
 
             try {
-                // Save Ride via API
-                const rideData = {
-                    from, to, date, time, vehicle, seats, price,
-                    details: document.getElementById('offerDetails').value
-                };
+                const res = await fetch('api_rides.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        action: 'update',
+                        ride_id: rideId,
+                        from, to, date, time, vehicle, seats, price, details
+                    })
+                });
                 
-                // Debug log
-                console.log("Submitting ride:", rideData);
-
-                const result = await RideManager.addRide(rideData);
-                console.log("Result:", result);
-
-                if (result.success) {
-                    document.getElementById('rideFormMessage').innerHTML = '<div class="success-message fade-in"><i class="fas fa-check-circle"></i> Ride published successfully!</div>';
-                    
-                    setTimeout(() => {
-                        document.getElementById('rideForm').reset();
-                        document.getElementById('rideFormMessage').innerHTML = '';
-                        window.location.href = 'dashboard.php'; // Redirect to dashboard to see the ride
-                    }, 1500);
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('rideFormMessage').innerHTML = '<div class="success-message fade-in"><i class="fas fa-check-circle"></i> Updated successfully!</div>';
+                    setTimeout(() => window.location.href = 'dashboard.php', 1000);
                 } else {
-                    document.getElementById('rideFormMessage').innerHTML = `<div class="error-banner"><i class="fas fa-exclamation-circle"></i> ${result.message}</div>`;
-                    const btn = e.target.querySelector('button[type="submit"]');
-                    btn.innerHTML = btn.dataset.originalText || 'Publish Ride'; // Restore text
-                    btn.disabled = false;
+                     document.getElementById('rideFormMessage').innerHTML = `<div class="error-banner">${data.message}</div>`;
+                     btn.innerHTML = originalText;
+                     btn.disabled = false;
                 }
             } catch (err) {
-                console.error("Submission Error:", err);
-                alert("An unexpected error occurred: " + err.message);
-                const btn = e.target.querySelector('button[type="submit"]');
-                btn.innerHTML = btn.dataset.originalText || 'Publish Ride';
+                console.error(err);
+                btn.innerHTML = originalText;
                 btn.disabled = false;
             }
         }

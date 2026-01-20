@@ -108,8 +108,19 @@ try {
             $user = $result_email->fetch_assoc();
             $stmt->close(); // Close before new prepare
             
-            $update_stmt = $conn->prepare("UPDATE users SET google_id = ? WHERE user_id = ?");
-            $update_stmt->bind_param("si", $google_id, $user['user_id']);
+            // Only update profile pic if not already set or it's just the default
+            $pic_sql = "";
+            $types = "si";
+            $params = [$google_id, $user['user_id']];
+
+            if ($picture && (empty($user['profile_pic']) || $user['profile_pic'] === 'default_user.png')) {
+                $update_stmt = $conn->prepare("UPDATE users SET google_id = ?, profile_pic = ? WHERE user_id = ?");
+                $update_stmt->bind_param("ssi", $google_id, $picture, $user['user_id']);
+            } else {
+                $update_stmt = $conn->prepare("UPDATE users SET google_id = ? WHERE user_id = ?");
+                $update_stmt->bind_param("si", $google_id, $user['user_id']);
+            }
+
             if (!$update_stmt->execute()) {
                  throw new Exception("Link Update failed: " . $update_stmt->error);
             }
@@ -125,9 +136,10 @@ try {
             
             $random_password = bin2hex(random_bytes(16)); // Secure random password
             $hashed_password = password_hash($random_password, PASSWORD_DEFAULT);
+            $pic_to_save = $picture ? $picture : 'default_user.png';
             
-            $insert_stmt = $conn->prepare("INSERT INTO users (name, email, password, role, google_id, is_verified) VALUES (?, ?, ?, ?, ?, 1)");
-            $insert_stmt->bind_param("sssss", $name, $email, $hashed_password, $input_role, $google_id);
+            $insert_stmt = $conn->prepare("INSERT INTO users (name, email, password, role, google_id, is_verified, profile_pic) VALUES (?, ?, ?, ?, ?, 1, ?)");
+            $insert_stmt->bind_param("ssssss", $name, $email, $hashed_password, $input_role, $google_id, $pic_to_save);
             
             if ($insert_stmt->execute()) {
                 $new_user_id = $insert_stmt->insert_id;
@@ -138,7 +150,8 @@ try {
                     'user_id' => $new_user_id,
                     'name' => $name,
                     'email' => $email, // Ensure email is passed
-                    'role' => $input_role
+                    'role' => $input_role,
+                    'profile_pic' => $pic_to_save
                 ];
                 loginUser($new_user);
             } else {

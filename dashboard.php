@@ -8,19 +8,25 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 // Access Session Data
-$userName = $_SESSION['username'] ?? 'User';
+$userName = ucwords(strtolower($_SESSION['username'] ?? 'User'));
 $userEmail = $_SESSION['email'] ?? 'user@example.com';
 $userFiles = $_SESSION['profile_pic'] ?? null;
 
-// Ensure we fetch the latest profile pic from DB (Good practice)
-$stmt = $conn->prepare("SELECT profile_pic FROM users WHERE user_id = ?");
+// Ensure we fetch the latest profile pic and rating from DB
+$stmt = $conn->prepare("SELECT profile_pic, rating FROM users WHERE user_id = ?");
 $stmt->bind_param("i", $_SESSION['user_id']);
 $stmt->execute();
 $res = $stmt->get_result();
 $u = $res->fetch_assoc();
-$profilePic = !empty($u['profile_pic']) && file_exists($u['profile_pic']) 
-              ? $u['profile_pic'] 
-              : null; // Null means we use the default icon
+
+$profilePic = null;
+if (!empty($u['profile_pic'])) {
+    if (filter_var($u['profile_pic'], FILTER_VALIDATE_URL)) {
+        $profilePic = $u['profile_pic'];
+    } elseif (file_exists($u['profile_pic'])) {
+        $profilePic = $u['profile_pic'];
+    }
+}
 
 // Stats Calculation
 // 1. Rides Offered (Count of all rides created by user)
@@ -48,7 +54,7 @@ $co2Saved = $ridesTaken * 2.5;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Dashboard - ShareMyRide</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body style="background-color: #f3f4f6;">
@@ -70,7 +76,7 @@ $co2Saved = $ridesTaken * 2.5;
         </div>
     </nav>
 
-    <div class="container" style="padding: 3rem 0;">
+    <div class="container" style="padding: 6rem 0 3rem;">
         
         <!-- Welcome Header -->
         <div style="background: linear-gradient(135deg, var(--dark-teal), var(--primary-teal)); color: white; padding: 3rem; border-radius: var(--radius-lg); margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: center;">
@@ -168,7 +174,7 @@ $co2Saved = $ridesTaken * 2.5;
     </div>
 
     <!-- Usage of existing JS for API calls -->
-    <script src="js/ride_manager.js"></script>
+    <script src="js/ride_manager.js?v=<?php echo time(); ?>"></script>
     <script>
         // Init Dashboard with Real API logic
         (async function() {
@@ -190,11 +196,14 @@ $co2Saved = $ridesTaken * 2.5;
              if(!container) return;
 
              try {
+                // Clear loading state immediately
+                container.innerHTML = '<div style="text-align:center; padding:1rem; color:#9ca3af;"><i class="fas fa-spinner fa-spin"></i> Checking bookings...</div>';
+
                 // Fetch outgoing requests (my bookings)
                 const response = await fetch('api_requests.php?type=outgoing');
                 const data = await response.json();
 
-                container.innerHTML = '';
+                container.innerHTML = ''; // Clear spinner
                 ratingsContainer.innerHTML = '';
                 let hasPendingRatings = false;
 
@@ -203,51 +212,49 @@ $co2Saved = $ridesTaken * 2.5;
                     let ratingsHtml = '';
                     
                     data.requests.forEach(req => {
-                        // Check if completed and NOT rated
-                        if (req.status === 'completed' && req.has_rated == 0) {
-                            hasPendingRatings = true;
-                            ratingsHtml += `
-                            <div class="trip-card" style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; border: 1px solid #d1fae5; background: #ecfdf5; padding: 1.5rem;">
-                                <div>
-                                     <h3 style="font-size: 1.1rem; color: var(--dark-teal); margin-bottom: 0.5rem;">Ride to ${req.to_location} Completed</h3>
-                                     <p style="color: var(--text-gray); font-size: 0.9rem;">Driver: <strong>${req.driver_name}</strong> • ${req.ride_date}</p>
-                                </div>
-                                <div>
-                                    <a href="rate_ride.php?ride_id=${req.ride_id}" class="btn btn-primary" style="padding: 0.5rem 1.5rem;">Rate Driver <i class="fas fa-star"></i></a>
-                                </div>
-                            </div>`;
-                            // Continue to prevent adding to main list? 
-                            // Actually, let's keep it in main list too, or remove it?
-                            // User request implies "Completed" rides should appear.
-                            // Let's NOT replicate it in the main list to separate "Todo" from "History".
-                            return; 
-                        }
-
-                        // Regular Booking List
                         let statusBadge = '';
                         let actionButtons = '';
                         
+                        // Normalizing status for logic
+                        const isRideFinished = (req.ride_status === 'completed');
+                        const isMyReqFinished = (req.status === 'completed');
+                        const isRated = (parseInt(req.has_rated) > 0);
+                        
+                        // DEBUG INFO (Remove in production)
+                        const debugInfo = `<div style="font-size:0.7rem; color:#9ca3af; margin-top:5px;">Ref: #${req.request_id} | St: ${req.status} | RSt: ${req.ride_status || 'act'}</div>`;
+
+                        // 1. Status Badge
                         if(req.status === 'pending') {
                             statusBadge = '<span class="trip-badge" style="background:#fef3c7; color:#d97706;">Pending</span>';
-                        } else if(req.status === 'accepted') {
-                            statusBadge = '<span class="trip-badge" style="background:#d1fae5; color:#065f46;">Accepted</span>';
-                            actionButtons = `
-                                <div style="margin-top:5px; display:flex; flex-direction:column; align-items:flex-end; gap:5px;">
-                                    <a href="ride_details.php?id=${req.ride_id}" style="font-size:0.8rem; color:var(--primary-teal);">Track Ride</a>
-                                    <button onclick="confirmArrival(${req.request_id})" class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem; border-color: var(--primary-teal); color: var(--primary-teal);">
-                                        <i class="fas fa-map-marker-alt"></i> I have Arrived
-                                    </button>
-                                </div>
-                            `;
                         } else if(req.status === 'rejected') {
                             statusBadge = '<span class="trip-badge" style="background:#fee2e2; color:#b91c1c;">Rejected</span>';
-                        } else if(req.status === 'completed') {
-                            statusBadge = '<span class="trip-badge" style="background:#f3f4f6; color:#374151;">Completed</span>';
-                            if(req.has_rated == 1) {
-                                actionButtons = '<div style="margin-top:5px; font-size:0.8rem; color: #10b981;"><i class="fas fa-check"></i> Rated</div>';
-                            }
+                        } else if(isRideFinished || isMyReqFinished) {
+                             statusBadge = '<span class="trip-badge" style="background:#d1fae5; color:#065f46;">Completed</span>';
+                        } else if(req.status === 'accepted') {
+                             statusBadge = '<span class="trip-badge" style="background:#d1fae5; color:#065f46;">Accepted</span>';
                         } else {
-                            statusBadge = `<span class="trip-badge" style="background:#f3f4f6; color:#374151;">${req.status}</span>`;
+                             statusBadge = `<span class="trip-badge" style="background:#f3f4f6; color:#374151;">${req.status}</span>`;
+                        }
+
+                        // 2. Action Buttons
+                        if (isRated) {
+                            actionButtons = '<div style="margin-top:5px; font-size:0.8rem; color: #10b981;"><i class="fas fa-check"></i> Already Rated</div>';
+                        } else {
+                             // Corrected Logic: Priority to Rating if finished
+                             if (isRideFinished || isMyReqFinished) {
+                                actionButtons = `<div style="margin-top:5px;">
+                                    <a href="rate_ride.php?request_id=${req.request_id}" class="btn btn-primary" style="padding: 0.4rem 1rem; font-size: 0.9rem;">Rate Driver <i class="fas fa-star"></i></a>
+                                </div>`;
+                             } else if (req.status === 'accepted') {
+                                actionButtons = `
+                                    <div style="margin-top:5px; display:flex; flex-direction:column; align-items:flex-end; gap:5px;">
+                                        <a href="ride_details.php?id=${req.ride_id}" style="font-size:0.8rem; color:var(--primary-teal);">Track Ride</a>
+                                        <button onclick="confirmArrival(${req.request_id})" class="btn btn-outline" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; border-color: var(--primary-teal); color: var(--primary-teal);">
+                                            <i class="fas fa-check-circle"></i> End Trip & Rate
+                                        </button>
+                                    </div>
+                                `;
+                             }
                         }
 
                         bookingsHtml += `
@@ -255,6 +262,7 @@ $co2Saved = $ridesTaken * 2.5;
                             <div>
                                  <h3 style="font-size: 1.1rem; color: var(--dark-teal);">${req.from_location} → ${req.to_location}</h3>
                                  <p style="color: var(--text-gray); font-size: 0.9rem;">${req.ride_date} • Funding Driver: ${req.driver_name}</p>
+                                 ${debugInfo} 
                             </div>
                             <div style="text-align:right;">
                                 ${statusBadge}
@@ -263,21 +271,11 @@ $co2Saved = $ridesTaken * 2.5;
                         </div>`;
                     });
 
-                    // (The rest of the function remains the same, just closing the loop logic modification)
                     container.innerHTML = bookingsHtml || '<p style="color: var(--text-gray);">No active bookings history.</p>';
-                    
-                    if(hasPendingRatings) {
-                        ratingsSection.style.display = 'block';
-                        ratingsContainer.innerHTML = ratingsHtml;
-                    } else {
-                         ratingsSection.style.display = 'block';
-                         ratingsContainer.innerHTML = '<p style="color: var(--text-gray); font-style: italic; font-size: 0.9rem;">No pending ratings. Completed rides will appear here.</p>';
-                    }
+                    ratingsSection.style.display = 'none'; // Replaced by inline buttons
 
                 } else {
                     container.innerHTML = '<p style="color: var(--text-gray);">No bookings yet.</p>';
-                    ratingsSection.style.display = 'block';
-                    ratingsContainer.innerHTML = '<p style="color: var(--text-gray); font-style: italic; font-size: 0.9rem;">No pending ratings.</p>';
                 }
             } catch (e) {
                 console.error(e);
@@ -286,71 +284,97 @@ $co2Saved = $ridesTaken * 2.5;
         }
 
         async function loadMyRides() {
-            // ... (keep existing)
-            // Filter by 'me'
-            const rides = await RideManager.getAllRides({ driver_id: 'me' }); 
             const container = document.getElementById('myRidesList');
-            container.innerHTML = '';
-            
-            if (rides.length === 0) {
-                 container.innerHTML = '<p class="text-center" style="color: var(--text-gray);">You haven\'t offered any rides yet.</p>';
-                 return;
-            }
-            
-            rides.forEach(ride => {
-                let statusColor = '#10b981'; 
-                if(ride.seats_available == 0) statusColor = '#ef4444'; 
-                
-                // Complete Button Logic
-                let actionBtn = '';
-                if(ride.status === 'active') {
-                    actionBtn = `<button onclick="completeRide(${ride.ride_id})" class="btn btn-outline" style="border-color: #059669; color: #059669; padding: 0.5rem; margin-right:5px;" title="Mark as Completed"><i class="fas fa-check"></i></button>`;
-                } else if(ride.status === 'completed') {
-                    actionBtn = `<span class="trip-badge" style="background:#d1fae5; color:#065f46; margin-right:5px;">Completed</span>`;
-                }
+            if (!container) return;
 
-                container.innerHTML += `
-                    <div class="trip-card" style="margin-bottom: 1rem; border: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; padding: 1.5rem;">
-                        <div>
-                            <h3 style="font-size: 1.2rem; color: var(--dark-teal); margin-bottom: 0.5rem;">${ride.from_location} → ${ride.to_location}</h3>
-                            <div style="color: var(--text-gray); font-size: 0.9rem;">
-                                <i class="fas fa-calendar"></i> ${ride.ride_date} • <i class="fas fa-clock"></i> ${ride.ride_time}
+            try {
+                // Filter by 'me'
+                const rides = await RideManager.getAllRides({ driver_id: 'me' }); 
+                container.innerHTML = '';
+                
+                if (!rides || rides.length === 0) {
+                     container.innerHTML = '<p class="text-center" style="color: var(--text-gray); padding: 2rem;">You haven\'t offered any rides yet.</p>';
+                     return;
+                }
+                
+                rides.forEach(ride => {
+                    let statusColor = '#10b981'; 
+                    if(ride.seats_available == 0) statusColor = '#ef4444'; 
+                    
+                    // Complete Button Logic
+                    let actionBtn = '';
+                    if(ride.status === 'active') {
+                        actionBtn = `<button onclick="completeRide(${ride.ride_id})" class="btn btn-outline" style="border-color: #059669; color: #059669; padding: 0.5rem; margin-right:5px;" title="Mark as Completed"><i class="fas fa-check"></i></button>`;
+                    } else if(ride.status === 'completed') {
+                        actionBtn = `<span class="trip-badge" style="background:#d1fae5; color:#065f46; margin-right:5px;">Completed</span>`;
+                    }
+
+                    // Title Logic (Long Trip vs Regular)
+                    let displayTitle = `${ride.from_location} → ${ride.to_location}`;
+                    let subTitle = '';
+                    let typeBadge = '';
+
+                    if (ride.ride_type === 'long') {
+                        // For long trips, title is the Details (Trip Name), subtitle is Route
+                        displayTitle = ride.details || 'Long Trip';
+                        subTitle = `<div style="font-size: 0.95rem; color: var(--primary-teal); margin-bottom: 0.25rem;"><i class="fas fa-route"></i> ${ride.from_location} → ${ride.to_location}</div>`;
+                        typeBadge = `<span class="trip-badge" style="background: var(--dark-teal); color: white; margin-right: 5px;">Long Trip</span>`;
+                    }
+
+                    container.innerHTML += `
+                        <div class="trip-card" style="margin-bottom: 1rem; border: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; padding: 1.5rem;">
+                            <div>
+                                <h3 style="font-size: 1.2rem; color: var(--dark-teal); margin-bottom: 0.5rem;">${displayTitle}</h3>
+                                ${subTitle}
+                                <div style="color: var(--text-gray); font-size: 0.9rem;">
+                                    <i class="fas fa-calendar"></i> ${ride.ride_date} • <i class="fas fa-clock"></i> ${ride.ride_time}
+                                </div>
+                                <div style="margin-top: 0.5rem;">
+                                    ${typeBadge}
+                                    <span class="trip-badge" style="background:${statusColor}20; color:${statusColor}">${ride.seats_available} seats left</span>
+                                    <span class="trip-badge" style="background: #f3f4f6; color: var(--text-dark);">₹${ride.price_per_seat}</span>
+                                </div>
                             </div>
-                            <div style="margin-top: 0.5rem;">
-                                <span class="trip-badge" style="background:${statusColor}20; color:${statusColor}">${ride.seats_available} seats left</span>
-                                <span class="trip-badge" style="background: #f3f4f6; color: var(--text-dark);">₹${ride.price_per_seat}</span>
+                            <div>
+                                ${actionBtn}
+                                <a href="edit_ride.php?id=${ride.ride_id}" class="btn btn-outline" style="border-color: var(--primary-teal); color: var(--primary-teal); padding: 0.5rem; margin-right: 5px;" title="Edit Ride">
+                                     <i class="fas fa-edit"></i>
+                                </a>
+                                <button onclick="deleteRide(${ride.ride_id})" class="btn btn-outline" style="border-color: var(--error-red); color: var(--error-red); padding: 0.5rem;" title="Delete Ride">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </div>
                         </div>
-                        <div>
-                            ${actionBtn}
-                            <button onclick="deleteRide(${ride.ride_id})" class="btn btn-outline" style="border-color: var(--error-red); color: var(--error-red); padding: 0.5rem;">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
+                    `;
+                });
+            } catch (e) {
+                console.error("Error loading rides:", e);
+                container.innerHTML = '<p style="color: var(--error-red); text-align: center;">Error loading rides. Please refresh.</p>';
+            }
         }
 
-        async function completeRide(id) {
-            if(!confirm("Mark this ride as completed? This will allow passengers to rate you.")) return;
+        async function completeRide(rideId) {
+            if(!confirm("Are you sure you want to mark this ride as completed?")) return;
             try {
                 const res = await fetch('api_rides.php', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ action: 'complete', ride_id: id })
+                    body: JSON.stringify({ action: 'complete', ride_id: rideId })
                 });
                 const data = await res.json();
                 if(data.success) {
-                    loadMyRides();
+                    alert(data.message);
+                    loadMyRides(); // Refresh the list
                 } else {
                     alert(data.message);
                 }
             } catch(e) { console.error(e); }
         }
+        
+        // ... ...
 
         async function confirmArrival(reqId) {
-            if(!confirm("Confirm you have arrived? This will mark the ride as completed for you and allow you to rate the driver.")) return;
+            if(!confirm("Have you arrived safely? This will complete the trip and allow you to rate the driver.")) return;
             try {
                 const res = await fetch('api_requests.php', {
                     method: 'POST',
@@ -359,7 +383,8 @@ $co2Saved = $ridesTaken * 2.5;
                 });
                 const data = await res.json();
                 if(data.success) {
-                    window.location.reload();
+                    // Redirect directly to rating
+                    window.location.href = `rate_ride.php?request_id=${reqId}`;
                 } else {
                     alert(data.message);
                 }
@@ -425,10 +450,23 @@ $co2Saved = $ridesTaken * 2.5;
             } catch(e) { console.error(e); }
         }
         
-        function deleteRide(id) {
-            if(confirm('Are you sure you want to cancel this ride?')) {
-                alert('Ride cancellation API to be implemented.');
-            }
+        async function deleteRide(id) {
+            if(!confirm('Are you sure you want to delete this ride? This cannot be undone.')) return;
+            
+            try {
+                const res = await fetch('api_rides.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ action: 'delete', ride_id: id })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    // Remove from UI immediately or reload
+                    loadMyRides();
+                } else {
+                    alert(data.message);
+                }
+            } catch(e) { console.error(e); }
         }
 
         function toggleMobileMenu() {

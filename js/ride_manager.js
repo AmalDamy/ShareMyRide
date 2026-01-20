@@ -96,57 +96,81 @@ const RideManager = {
     initNotifications: function () {
         const navLinks = document.getElementById('navLinks');
         if (!navLinks) return;
-        if (document.getElementById('navNotificationContainer')) return;
 
-        // Container
-        const container = document.createElement('div');
-        container.id = 'navNotificationContainer';
-        container.style.cssText = 'position: relative; display: flex; align-items: center; margin-right: 15px;';
+        // 1. Create Bell if not exists
+        if (!document.getElementById('navNotificationContainer')) {
+            const container = document.createElement('div');
+            container.id = 'navNotificationContainer';
+            container.style.cssText = 'position: relative; display: flex; align-items: center; margin-right: 15px;';
 
-        // Bell Icon
-        const bellItem = document.createElement('div');
-        bellItem.id = 'navNotification';
-        bellItem.style.cssText = 'cursor: pointer; padding: 10px; position: relative; color: var(--text-dark); display: flex; align-items: center; justify-content: center;';
-        bellItem.innerHTML = `
-            <i class="fas fa-bell" style="font-size: 1.2rem;"></i>
-            <span id="notifBadge" style="position: absolute; top: 0px; right: 0px; background: var(--error-red); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; pointer-events: none;">0</span>
-        `;
+            const bellItem = document.createElement('div');
+            bellItem.id = 'navNotification';
+            bellItem.style.cssText = 'cursor: pointer; padding: 10px; position: relative; color: var(--text-dark); display: flex; align-items: center; justify-content: center; transition: transform 0.2s;';
+            bellItem.innerHTML = `
+                <i class="fas fa-bell" style="font-size: 1.3rem;"></i>
+                <span id="notifBadge" style="position: absolute; top: 2px; right: 2px; background: var(--error-red); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; pointer-events: none; border: 2px solid #fff;">0</span>
+            `;
 
-        // Dropdown
-        const dropdown = document.createElement('div');
-        dropdown.id = 'notifDropdown';
-        dropdown.style.cssText = 'position: absolute; top: 120%; right: -10px; width: 320px; background: white; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); display: none; z-index: 9999; max-height: 400px; overflow-y: auto;';
+            bellItem.onclick = () => this.toggleModal();
+            container.appendChild(bellItem);
 
-        // Arrow for dropdown
-        const arrow = document.createElement('div');
-        arrow.style.cssText = 'position: absolute; top: -6px; right: 15px; width: 12px; height: 12px; background: white; transform: rotate(45deg); border-left: 1px solid #e5e7eb; border-top: 1px solid #e5e7eb;';
-        dropdown.appendChild(arrow);
+            // Insert into Nav
+            const btn = navLinks.querySelector('button');
+            if (btn) navLinks.insertBefore(container, btn);
+            else navLinks.appendChild(container);
+        }
 
-        container.appendChild(bellItem);
-        container.appendChild(dropdown);
+        // 2. Create Modal DOM if not exists
+        this.createModal();
 
-        // Insert into Nav
-        const btn = navLinks.querySelector('button');
-        if (btn) navLinks.insertBefore(container, btn);
-        else navLinks.appendChild(container);
-
-        // Toggle
-        bellItem.onclick = (e) => {
-            e.stopPropagation();
-            console.log("Bell clicked");
-            const isVisible = dropdown.style.display === 'block';
-            dropdown.style.display = isVisible ? 'none' : 'block';
-            if (!isVisible && this.markAllReadDisplay) this.markAllReadDisplay();
-        };
-
-        // Close on click outside
-        document.addEventListener('click', (e) => {
-            if (!container.contains(e.target)) dropdown.style.display = 'none';
-        });
-
-        // Start Polling
+        // 3. Start Polling
         this.pollNotifications();
         setInterval(() => this.pollNotifications(), 5000);
+    },
+
+    createModal: function () {
+        if (document.getElementById('notificationModal')) return;
+
+        const modalHtml = `
+            <div id="notificationModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
+                <div style="background:white; width:90%; max-width:500px; max-height:80vh; border-radius:16px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); animation: zoomIn 0.2s ease-out;">
+                    <div style="padding:1.5rem; border-bottom:1px solid #f3f4f6; display:flex; justify-content:space-between; align-items:center; background:#fff;">
+                        <div>
+                            <h3 style="margin:0; color:#111827; font-size:1.25rem; font-weight:700;">Notifications</h3>
+                            <p style="margin:0; color:#6b7280; font-size:0.85rem;">Your latest updates</p>
+                        </div>
+                        <button onclick="RideManager.toggleModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:#9ca3af; transition:color 0.2s;"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div id="modalNotifList" style="overflow-y:auto; flex:1; padding:0; background:#f9fafb;">
+                        <!-- Content -->
+                        <div style="padding:2rem; text-align:center; color:#9ca3af;">Loading...</div>
+                    </div>
+                    <div style="padding:1rem; border-top:1px solid #f3f4f6; text-align:center; background:#fff;">
+                        <button onclick="RideManager.markAllRead()" style="color:var(--primary-teal); border:none; background:none; font-weight:600; cursor:pointer; font-size:0.9rem;">Mark all as read</button>
+                    </div>
+                </div>
+            </div>
+            <style>
+                @keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+                #navNotification:hover { transform: scale(1.1); }
+            </style>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Close on outside click
+        document.getElementById('notificationModal').onclick = (e) => {
+            if (e.target.id === 'notificationModal') this.toggleModal();
+        };
+    },
+
+    toggleModal: function () {
+        const modal = document.getElementById('notificationModal');
+        if (!modal) return;
+        const isHidden = modal.style.display === 'none';
+        modal.style.display = isHidden ? 'flex' : 'none';
+        document.body.style.overflow = isHidden ? 'hidden' : ''; // Prevent body scroll
+
+        if (isHidden) this.renderModalList(); // Refresh content on open
     },
 
     pollNotifications: async function () {
@@ -164,57 +188,122 @@ const RideManager = {
                     badge.style.opacity = unreadCount > 0 ? '1' : '0';
                 }
 
-                this.renderDropdown();
+                // If modal is open, refresh list
+                const modal = document.getElementById('notificationModal');
+                if (modal && modal.style.display !== 'none') {
+                    this.renderModalList();
+                }
             }
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) { console.error(e); }
     },
 
-    renderDropdown: function () {
-        const dropdown = document.getElementById('notifDropdown');
-        if (!dropdown) return;
+    renderModalList: function () {
+        const container = document.getElementById('modalNotifList');
+        if (!container) return;
 
         if (this.notifications.length === 0) {
-            dropdown.innerHTML = '<div style="padding: 1rem; text-align: center; color: #6b7280; font-size: 0.9rem;">No notifications</div>';
+            container.innerHTML = `
+                <div style="padding: 3rem 1rem; text-align: center; color: #6b7280; display:flex; flex-direction:column; align-items:center;">
+                    <i class="fas fa-bell-slash" style="font-size:2rem; margin-bottom:1rem; opacity:0.5;"></i>
+                    <p>No notifications yet</p>
+                </div>`;
             return;
         }
 
-        let html = '<div style="padding: 0.5rem 0;">';
+        let html = '';
         this.notifications.forEach(n => {
-            const bg = n.is_read == 0 ? '#f0fdf4' : '#fff';
-            const icon = n.type === 'success' ? '<i class="fas fa-check-circle" style="color:#10b981;"></i>' : '<i class="fas fa-info-circle" style="color:#3b82f6;"></i>';
+            const isUnread = n.is_read == 0;
+            const bg = isUnread ? '#fff' : '#f9fafb';
+            const borderLeft = isUnread ? '4px solid var(--primary-teal)' : '4px solid transparent';
+            const opacity = isUnread ? '1' : '0.7';
+
+            // Icon based on type
+            let icon = '<i class="fas fa-info-circle text-blue-500"></i>';
+            let iconBg = '#dbeafe';
+            let iconColor = '#2563eb';
+
+            if (n.type === 'success') {
+                icon = '<i class="fas fa-check"></i>';
+                iconBg = '#d1fae5';
+                iconColor = '#059669';
+            } else if (n.type === 'warning' || n.type === 'error') {
+                icon = '<i class="fas fa-exclamation"></i>';
+                iconBg = '#fee2e2';
+                iconColor = '#dc2626';
+            }
+
+            // Format Date nicely
+            const d = new Date(n.created_at);
+            const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ', ' +
+                d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 
             html += `
-                <div onclick="RideManager.handleNotifClick(${n.id})" style="padding: 0.8rem 1rem; border-bottom: 1px solid #f3f4f6; background: ${bg}; cursor: pointer; display: flex; gap: 10px; align-items: flex-start;">
-                    <div style="margin-top: 2px;">${icon}</div>
-                    <div>
-                        <div style="font-weight: 600; font-size: 0.9rem; color: #1f2937;">${n.title || 'Notification'}</div>
-                        <div style="font-size: 0.85rem; color: #4b5563;">${n.message}</div>
-                        <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 2px;">${n.created_at}</div>
+                <div onclick="RideManager.handleNotifClick(${n.id})" style="padding: 1rem 1.5rem; border-bottom: 1px solid #f3f4f6; background: ${bg}; cursor: pointer; display: flex; gap: 1rem; align-items: flex-start; border-left: ${borderLeft}; transition: background 0.2s;">
+                    <div style="flex-shrink:0; width:40px; height:40px; border-radius:50%; background:${iconBg}; color:${iconColor}; display:flex; align-items:center; justify-content:center; font-size:1rem;">
+                        ${icon}
+                    </div>
+                    <div style="flex:1; opacity: ${opacity};">
+                        <div style="font-weight: 600; font-size: 0.95rem; color: #1f2937; margin-bottom:0.25rem; display:flex; justify-content:space-between;">
+                            <span>${n.title || 'Notification'}</span>
+                            ${isUnread ? '<span style="font-size:0.6rem; background:var(--primary-teal); color:white; padding:2px 6px; border-radius:10px;">NEW</span>' : ''}
+                        </div>
+                        <div style="font-size: 0.9rem; color: #4b5563; line-height:1.4;">${n.message}</div>
+                        <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.5rem; font-style:italic;">${dateStr}</div>
                     </div>
                 </div>
             `;
         });
-        html += '</div>';
-        dropdown.innerHTML = html;
+        container.innerHTML = html;
     },
 
     handleNotifClick: async function (id) {
+        // Find notification
+        const notif = this.notifications.find(n => n.id === id);
+        if (!notif) return;
+
+        // Navigate if link exists (do this first or after? After strictly speaking, but for UX maybe immediate?)
+        // Let's do it after finding it.
+        if (notif.link) {
+            // If hash is different within same page, we might need to manually scroll
+            if (notif.link.includes('#') && notif.link.split('#')[0] === window.location.pathname.split('/').pop()) {
+                const targetId = notif.link.split('#')[1];
+                const el = document.getElementById(targetId);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth' });
+                    // Also close modal
+                    this.toggleModal();
+                }
+            } else {
+                window.location.href = notif.link;
+            }
+        }
+
         // Mark as read
+        if (notif.is_read == 0) {
+            notif.is_read = 1;
+            this.renderModalList();
+            try {
+                await fetch('api_notifications.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'mark_read', id: id })
+                });
+                this.pollNotifications();
+            } catch (e) { }
+        }
+    },
+
+    markAllRead: async function () {
+        if (!confirm("Mark all notifications as read?")) return;
         try {
             await fetch('api_notifications.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'mark_read', id: id })
+                body: JSON.stringify({ action: 'mark_all_read' })
             });
-            this.pollNotifications(); // Refresh
+            this.pollNotifications();
         } catch (e) { }
     },
-
-    markAllReadDisplay: function () {
-        // Just a visual helper or could call API 'mark_all_read'
-    }
 
     // --- INIT ---
     init: function () {
@@ -224,6 +313,9 @@ const RideManager = {
         });
     }
 };
+
+// Make available globally for HTML onclick handlers
+window.RideManager = RideManager;
 
 // Auto-init
 RideManager.init();

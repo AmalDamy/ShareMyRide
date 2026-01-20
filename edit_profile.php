@@ -83,9 +83,16 @@ $result = $stmt->get_result();
 $user = $result->fetch_assoc();
 
 // Use default if nothing in DB
-$current_pic = !empty($user['profile_pic']) && file_exists($user['profile_pic']) 
-               ? $user['profile_pic'] 
-               : 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Fallback URL or local default
+// Use default if nothing in DB
+$current_pic = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Fallback
+
+if (!empty($user['profile_pic'])) {
+    if (filter_var($user['profile_pic'], FILTER_VALIDATE_URL)) {
+        $current_pic = $user['profile_pic'];
+    } elseif (file_exists($user['profile_pic'])) {
+        $current_pic = $user['profile_pic'];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

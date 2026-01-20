@@ -30,19 +30,41 @@ if ($method === 'POST') {
             exit;
         }
 
+        // Check if user is the driver
+        $driverCheck = $conn->query("SELECT driver_id FROM rides WHERE ride_id = $ride_id");
+        if($driverCheck && $driverCheck->num_rows > 0) {
+            $dRow = $driverCheck->fetch_assoc();
+            if($dRow['driver_id'] == $passenger_id) {
+                echo JSON_encode(['success' => false, 'message' => 'You cannot request your own ride']);
+                exit;
+            }
+        }
+
         $stmt = $conn->prepare("INSERT INTO ride_requests (ride_id, passenger_id, seats_requested) VALUES (?, ?, ?)");
         $stmt->bind_param("iii", $ride_id, $passenger_id, $seats);
 
         if ($stmt->execute()) {
             
-            // Notify Driver (Insert into notifications table)
-            // Get driver ID
-            $getDriver = $conn->query("SELECT driver_id FROM rides WHERE ride_id = $ride_id");
-            $driverRow = $getDriver->fetch_assoc();
-            $driver_id = $driverRow['driver_id'];
+            // Notify Driver
+            // Get driver ID and Ride Info
+            $getRide = $conn->query("SELECT r.driver_id, r.to_location, u.name as passenger_name 
+                                    FROM rides r 
+                                    JOIN users u ON u.user_id = $passenger_id 
+                                    WHERE r.ride_id = $ride_id");
+            $rideRow = $getRide->fetch_assoc();
             
-            $msg = "New ride request from a user!";
-            $conn->query("INSERT INTO notifications (user_id, title, message, type) VALUES ($driver_id, 'New Ride Request', '$msg', 'info')");
+            $driver_id = $rideRow['driver_id'];
+            $pass_name = $rideRow['passenger_name'];
+            $dest = $rideRow['to_location'];
+            
+            $title = "New Request: $pass_name";
+            $msg = "Requested $seats seat(s) for ride to $dest";
+            $type = 'info';
+            $link = 'dashboard.php#incoming';
+            
+            $nStmt = $conn->prepare("INSERT INTO notifications (user_id, title, message, type, link) VALUES (?, ?, ?, ?, ?)");
+            $nStmt->bind_param("issss", $driver_id, $title, $msg, $type, $link);
+            $nStmt->execute();
 
             echo JSON_encode(['success' => true, 'message' => 'Request sent successfully']);
         } else {
@@ -55,7 +77,7 @@ if ($method === 'POST') {
         
         // Verify driver owns the ride
         $check = $conn->prepare("
-            SELECT rq.ride_id, rq.seats_requested, r.driver_id, r.seats_available 
+            SELECT rq.ride_id, rq.passenger_id, rq.seats_requested, r.driver_id, r.seats_available, r.to_location 
             FROM ride_requests rq 
             JOIN rides r ON rq.ride_id = r.ride_id 
             WHERE rq.request_id = ?
@@ -78,7 +100,6 @@ if ($method === 'POST') {
         
         $new_status = ($action === 'accept') ? 'accepted' : 'rejected';
         
-        // If accepting, check seats
         if ($action === 'accept' && $row['seats_available'] < $row['seats_requested']) {
             echo JSON_encode(['success' => false, 'message' => 'Not enough seats available']);
             exit;
@@ -90,15 +111,33 @@ if ($method === 'POST') {
         
         if ($upd->execute()) {
             
+            $pass_id = $row['passenger_id'];
+            $dest = $row['to_location'];
+            $link = 'dashboard.php#bookings';
+
             // If accepted, decrease seats
             if ($action === 'accept') {
                 $new_seats = $row['seats_available'] - $row['seats_requested'];
                 $conn->query("UPDATE rides SET seats_available = $new_seats WHERE ride_id = " . $row['ride_id']);
                 
                 // Notify Passenger
-                $pass_id = $conn->query("SELECT passenger_id FROM ride_requests WHERE request_id = $request_id")->fetch_assoc()['passenger_id'];
-                $msg = "Your ride request has been accepted!";
-                $conn->query("INSERT INTO notifications (user_id, title, message, type) VALUES ($pass_id, 'Ride Accepted', '$msg', 'success')");
+                $title = 'Ride Accepted';
+                $msg = "Your ride to $dest has been accepted!";
+                $type = 'success';
+                
+                $nStmt = $conn->prepare("INSERT INTO notifications (user_id, title, message, type, link) VALUES (?, ?, ?, ?, ?)");
+                $nStmt->bind_param("issss", $pass_id, $title, $msg, $type, $link);
+                $nStmt->execute();
+
+            } elseif ($action === 'reject') {
+                // Notify Passenger
+                $title = 'Ride Rejected';
+                $msg = "Your ride request to $dest was rejected.";
+                $type = 'warning';
+                
+                $nStmt = $conn->prepare("INSERT INTO notifications (user_id, title, message, type, link) VALUES (?, ?, ?, ?, ?)");
+                $nStmt->bind_param("issss", $pass_id, $title, $msg, $type, $link);
+                $nStmt->execute();
             }
 
             echo JSON_encode(['success' => true, 'message' => 'Request ' . $new_status]);
@@ -143,7 +182,8 @@ if ($method === 'POST') {
     } else {
         // Requests BY this user (Passenger)
         // Check if rated: JOIN with reviews table
-        $sql = "SELECT rq.*, r.from_location, r.to_location, r.ride_date, r.ride_time, r.price_per_seat,
+        // We also fetch r.status as ride_status. If the ride is globally completed, the user should be able to rate.
+        $sql = "SELECT rq.*, r.from_location, r.to_location, r.ride_date, r.ride_time, r.price_per_seat, r.status as ride_status,
                        u.name as driver_name,
                        (SELECT COUNT(*) FROM reviews rev WHERE rev.ride_id = rq.ride_id AND rev.reviewer_id = rq.passenger_id) as has_rated
                 FROM ride_requests rq 

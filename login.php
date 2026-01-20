@@ -310,15 +310,7 @@ if (isset($_SESSION['user_id'])) {
             <form id="signupForm" onsubmit="handleAuth(event, 'signup')">
                 <h1>Create Account</h1>
                 
-                <div class="g_id_signin"
-                     data-type="standard"
-                     data-shape="pill"
-                     data-theme="outline"
-                     data-text="signup_with"
-                     data-size="large"
-                     data-logo_alignment="left"
-                     data-width="300">
-                </div>
+                <div id="google_btn_signup" style="margin-bottom: 15px; height: 44px;"></div>
                 
                 <span class="my-2">or use your email for registration</span>
                 
@@ -339,23 +331,8 @@ if (isset($_SESSION['user_id'])) {
             <form id="loginForm" onsubmit="handleAuth(event, 'login')" autocomplete="off">
                 <h1 style="margin-bottom: 1rem;">Sign in</h1>
                 
-                <div id="g_id_onload"
-                     data-client_id="<?php echo GOOGLE_CLIENT_ID; ?>"
-                     data-context="signin"
-                     data-ux_mode="popup"
-                     data-callback="handleCredentialResponse"
-                     data-auto_prompt="false">
-                </div>
-
-                <div class="g_id_signin"
-                     data-type="standard"
-                     data-shape="pill"
-                     data-theme="outline"
-                     data-text="sign_in_with"
-                     data-size="large"
-                     data-logo_alignment="left"
-                     data-width="300">
-                </div>
+                <div id="google_btn_login" style="margin-bottom: 15px; height: 44px;"></div>
+                <!-- Signup form also uses this ID pattern? No, IDs must be unique. Let's handle both. -->
                 
                 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
@@ -410,19 +387,7 @@ if (isset($_SESSION['user_id'])) {
             container.classList.remove("right-panel-active");
         });
 
-        // URL Params for initial state
-        window.addEventListener('load', () => {
-            const params = new URLSearchParams(window.location.search);
-            if (params.get('mode') === 'signup') {
-                container.classList.add("right-panel-active");
-            }
-            // Clear inputs for fresh login
-            document.getElementById('loginEmail').value = '';
-            document.getElementById('loginPass').value = '';
-            document.getElementById('signupName').value = '';
-            document.getElementById('signupEmail').value = '';
-            document.getElementById('signupPass').value = '';
-        });
+        // URL Params Logic moved to window.onload below
 
         // Mobile Responsive Logic
         function toggleMobile(target) {
@@ -552,6 +517,49 @@ if (isset($_SESSION['user_id'])) {
                 gBtns.forEach(btn => btn.style.opacity = '1');
             });
         }
+
+        // Initialize Google Button
+        window.onload = function() {
+            // Re-run original onload logic
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('mode') === 'signup') {
+                container.classList.add("right-panel-active");
+            }
+            // Clear inputs for fresh login
+            if(document.getElementById('loginEmail')) document.getElementById('loginEmail').value = '';
+            if(document.getElementById('loginPass')) document.getElementById('loginPass').value = '';
+            if(document.getElementById('signupName')) document.getElementById('signupName').value = '';
+            if(document.getElementById('signupEmail')) document.getElementById('signupEmail').value = '';
+            if(document.getElementById('signupPass')) document.getElementById('signupPass').value = '';
+
+            // Initialize GSI
+            try {
+                google.accounts.id.initialize({
+                    client_id: "<?php echo GOOGLE_CLIENT_ID; ?>",
+                    callback: handleCredentialResponse
+                });
+                
+                // Render Login Button
+                const loginParent = document.getElementById("google_btn_login");
+                if(loginParent) {
+                    google.accounts.id.renderButton(
+                        loginParent,
+                        { theme: "outline", size: "large", width: 280, text: "sign_in_with" } 
+                    );
+                }
+
+                // Render Signup Button
+                const signupParent = document.getElementById("google_btn_signup");
+                if(signupParent) {
+                    google.accounts.id.renderButton(
+                        signupParent,
+                        { theme: "outline", size: "large", width: 280, text: "signup_with" } 
+                    );
+                }
+            } catch (e) {
+                console.error("Google Sign In Error:", e);
+            }
+        };
     </script>
 </body>
 </html>

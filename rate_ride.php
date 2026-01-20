@@ -83,6 +83,7 @@ if (!isset($_SESSION['user_id'])) {
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const rideId = urlParams.get('ride_id');
+        const requestId = urlParams.get('request_id');
 
         async function submitRating(e) {
             e.preventDefault();
@@ -107,6 +108,7 @@ if (!isset($_SESSION['user_id'])) {
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         ride_id: rideId,
+                        request_id: requestId,
                         rating: val,
                         comment: comment
                     })

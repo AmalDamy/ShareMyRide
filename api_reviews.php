@@ -12,6 +12,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
     
     $ride_id = $data['ride_id'] ?? 0;
+    $request_id = $data['request_id'] ?? 0;
+    
+    // If we have a request_id but no ride_id, lookup the ride
+    if (empty($ride_id) && !empty($request_id)) {
+        $reqQ = $conn->query("SELECT ride_id FROM ride_requests WHERE request_id = $request_id");
+        if ($reqQ && $reqQ->num_rows > 0) {
+            $ride_id = $reqQ->fetch_assoc()['ride_id'];
+        }
+    }
+    
     $rating = $data['rating'] ?? 5;
     $comment = $data['comment'] ?? '';
     $reviewer_id = $_SESSION['user_id'];

@@ -144,35 +144,25 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     
+    <!-- Leaflet Routing Machine -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
     <script>
         // 1. Initialize Map
-        // Center on Amal Jyothi College of Engineering (Kanjirapally)
         const campusCoords = [9.5293, 76.8221];
         
         const map = L.map('map', {
             zoomControl: false 
         }).setView(campusCoords, 11); 
         
-        // Add Google Maps Tile Layer
         L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
             maxZoom: 20,
             subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
             attribution: '&copy; Google Maps'
         }).addTo(map);
 
-        // Add Zoom Control to bottom-right
-        L.control.zoom({
-            position: 'bottomright'
-        }).addTo(map);
-
-        // Campus Marker
-        const campusIcon = L.divIcon({
-            html: '<div style="font-size: 2.5rem; color: #ea4335; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.3));"><i class="fas fa-university"></i></div>',
-            className: 'custom-div-icon',
-            iconSize: [40, 40],
-            iconAnchor: [20, 20]
-        });
-        L.marker(campusCoords, {icon: campusIcon}).addTo(map).bindPopup("<b>Amal Jyothi College of Engineering</b><br>Campus").openPopup();
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
 
         // Icons
         const carIcon = L.divIcon({
@@ -182,13 +172,13 @@
             iconAnchor: [15, 15]
         });
 
-        // Pre-populate cache with known locations for the demo to ensure 100% accuracy
+           // Pre-populate cache with known locations for the demo to ensure 100% accuracy
         const geoCache = {
-            'Amal Jyothi': [9.5293, 76.8221],
+            'Amal Jyothi': [9.5293, 76.8221], 
             'Amal Jyothi College': [9.5293, 76.8221],
-            'Campus': [9.5293, 76.8221],
-            'AJCE': [9.5293, 76.8221], 
+            'AJCE': [9.5293, 76.8221],
             'Kanjirapally': [9.5546, 76.7865],
+            'Kanjirappally': [9.5546, 76.7865],
             'Kottayam': [9.5916, 76.5222],
             'Kochi': [9.9312, 76.2673],
             'Cochin': [9.9312, 76.2673],
@@ -200,82 +190,91 @@
             'Pala': [9.7088, 76.6806],
             'Palai': [9.7088, 76.6806],
             'Mundakayam': [9.5833, 76.8833],
+            'Mundakkayam': [9.5833, 76.8833],
             'Ponkunnam': [9.5663, 76.7622],
             'Changanassery': [9.4424, 76.5402],
             'Alappuzha': [9.4981, 76.3388],
-            'Alleppey': [9.4981, 76.3388]
+            'Alleppey': [9.4981, 76.3388],
+            '26 Mile': [9.5480, 76.8050], // Adjusted to be closer to Kanjirapally NH183
+            '26th Mile': [9.5480, 76.8050],
+            '26mile': [9.5480, 76.8050],
+            'Erumeli': [9.4827, 76.8369],
+            'Ranni': [9.3800, 76.7800],
+            'Pambadv': [9.5600, 76.6500],
+            'Pampady': [9.5600, 76.6500],
+            'Koovappally': [9.5400, 76.8000],
+            'Koovapally': [9.5400, 76.8000],
+            '26 mile': [9.5480, 76.8050],
+            'mundakkayam': [9.5833, 76.8833]
         };
 
         const CAMPUS_COORDS = [9.5293, 76.8221];
 
         function normalizePlace(name) {
             if (!name) return '';
-            const text = name.toLowerCase().replace(/\./g, '').trim(); // Remove dots, keep spaces
-            
-            // Specific variations for Amal Jyothi
-            if (text.includes('amal jyothi') || text.includes('amaljyothi') || text === 'ajce' || text.includes('ajce campus')) {
-                return 'Amal Jyothi';
-            }
-            // "Campus" might be ambiguous, but if user implies *the* campus:
-            if (text === 'campus' || text === 'college') {
-                return 'Amal Jyothi'; 
-            }
-            
-            return name; // Return original if no special match
+            let text = name.toLowerCase().replace(/[.,]/g, '').trim(); // Remove dots/commas
+            if (text.includes('amal jyothi') || text.includes('ajce') || text === 'campus') return 'Amal Jyothi';
+            if (text.includes('26') && text.includes('mile')) return '26 Mile';
+            return name;
         }
 
         async function getCoordinates(placeName) {
-            // 1. Normalize name to handle typos/variations
             const normalizedName = normalizePlace(placeName);
-
-            // 2. Check if normalized name is the campus
-            if (normalizedName === 'Amal Jyothi') {
-                return CAMPUS_COORDS;
-            }
-
-            // 3. Check cache (using both original and normalized keys if possible, but mainly original for exact matches)
-            // We iterate keys to do a case-insensitive match for cache hits
-            const cacheKey = Object.keys(geoCache).find(key => key.toLowerCase() === placeName.toLowerCase());
+            
+            // Check cache case-insensitive
+            const cacheKey = Object.keys(geoCache).find(key => key.toLowerCase() === normalizedName.toLowerCase() || key.toLowerCase() === placeName.toLowerCase());
             if (cacheKey) return geoCache[cacheKey];
 
             try {
-                // 4. API Call
-                const query = `${placeName}, Kerala, India`; 
-                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`;
-                
-                const response = await fetch(url);
-                const data = await response.json();
+                // Try very specific search for Kottayam District first
+                let query = `${placeName}, Kottayam District, Kerala`; 
+                let response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+                let data = await response.json();
 
                 if (data && data.length > 0) {
-                    const lat = parseFloat(data[0].lat);
-                    const lon = parseFloat(data[0].lon);
-                    const coords = [lat, lon];
-                    
-                    // Save to local cache to save future requests
+                    const coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
                     geoCache[placeName] = coords;
                     return coords;
                 }
+
+                // Retry with broader search (All India)
+                query = `${placeName}, India`;
+                response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+                data = await response.json();
+
+                if (data && data.length > 0) {
+                    const coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+                    geoCache[placeName] = coords;
+                    return coords;
+                }
+                
+                // Final generic retry (Global)
+                query = placeName;
+                response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+                data = await response.json();
+
+                if (data && data.length > 0) {
+                    const coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+                    geoCache[placeName] = coords;
+                    return coords;
+                }
+
             } catch (e) {
                 console.warn("Geocoding failed for", placeName, e);
             }
             
-            // 5. Hard Fallback (Use map center or alert, don't use Kanjirapally silently)
-            // Returning NULL allows us to handle the error in UI
-            console.error("Could not locate:", placeName);
+            // If all searches fail, return null (Control flow handles alert)
             return null; 
         }
 
-        let currentMarkers = [];
-        let currentRoute = null;
+        let routingControl = null;
+        let carMarker = null;
 
-        // 2. Load Active Rides
         async function loadActiveRides() {
             const listContainer = document.getElementById('ridesList');
             try {
-                // Fetch all rides
-                const response = await fetch('api_rides.php?type='); 
+                const response = await fetch('api_rides.php'); 
                 const data = await response.json();
-
                 if(data.success && data.rides.length > 0) {
                     listContainer.innerHTML = '';
                     data.rides.forEach(ride => {
@@ -291,103 +290,138 @@
                                 <div style="font-size: 0.95rem; font-weight: 600; color: var(--dark-teal); margin-bottom: 0.3rem;">
                                     ${ride.from_location} → ${ride.to_location}
                                 </div>
-                                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #6b7280;">
-                                    <span><i class="fas fa-calendar"></i> ${ride.ride_date}</span>
-                                    <span><i class="fas fa-clock"></i> ${ride.ride_time.substring(0,5)}</span>
-                                </div>
                             </div>
                         `;
                     });
                 } else {
                     listContainer.innerHTML = '<p style="text-align:center; padding: 2rem;">No active rides found.</p>';
                 }
-            } catch(e) {
-                console.error(e);
-                listContainer.innerHTML = '<p style="color:red; text-align:center;">Error loading rides.</p>';
-            }
+            } catch(e) { console.error(e); }
         }
 
-        // 3. Focus Map on Ride with Dynamic Geocoding
         window.focusRide = async function(id, from, to, driver) {
-            // Highlight list item
+            // UI Update
             document.querySelectorAll('.ride-item').forEach(el => el.classList.remove('active'));
             const activeItem = document.getElementById(`ride-${id}`);
             if(activeItem) {
                 activeItem.classList.add('active');
-                activeItem.innerHTML += '<div style="font-size:0.8rem; color:var(--primary-teal); margin-top:5px;"><i class="fas fa-spinner fa-spin"></i> Locating path...</div>';
+                activeItem.innerHTML += '<div class="loading-ind" style="font-size:0.8rem; color:var(--primary-teal);"><i class="fas fa-spinner fa-spin"></i> Calculating route...</div>';
             }
 
-            // Clear map
-            if(currentRoute) map.removeLayer(currentRoute);
-            currentMarkers.forEach(m => map.removeLayer(m));
-            currentMarkers = [];
+            // Cleanup
+            if (routingControl) {
+                map.removeControl(routingControl);
+                routingControl = null;
+            }
+            if (carMarker) {
+                map.removeLayer(carMarker);
+                carMarker = null;
+            }
 
-            // Get Real Coordinates
+            // Coordinates
             const start = await getCoordinates(from);
             const end = await getCoordinates(to);
-            
-            // Remove loading spinner
+
+            // Remove spinner
             if(activeItem) {
-                const spinner = activeItem.querySelector('.fa-spinner').parentNode;
+                const spinner = activeItem.querySelector('.loading-ind');
                 if(spinner) spinner.remove();
             }
 
-            // Draw Markers
-            const m1 = L.marker(start).addTo(map).bindPopup(`<b>Start:</b> ${from}`);
-            const m2 = L.marker(end).addTo(map).bindPopup(`<b>End:</b> ${to}`);
-            
-            // Draw Car (Simulate at start)
-            const car = L.marker(start, {icon: carIcon, zIndexOffset: 1000}).addTo(map);
+            if (!start || !end) {
+                alert(`Could not locate one of the locations: ${!start ? from : to}. Please check the location names.`);
+                return;
+            }
 
-            currentMarkers = [m1, m2, car];
-
-            // Draw Route Line
-            currentRoute = L.polyline([start, end], {
-                color: '#10b981',
-                weight: 5,
-                opacity: 0.8,
-                dashArray: '10, 10'
+            // Draw Route using Leaflet Routing Machine
+            routingControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(start[0], start[1]),
+                    L.latLng(end[0], end[1])
+                ],
+                routeWhileDragging: false,
+                addWaypoints: false,
+                draggableWaypoints: false,
+                fitSelectedRoutes: true,
+                show: false, // Hide instructions
+                lineOptions: {
+                    styles: [{color: '#10b981', opacity: 0.8, weight: 6}]
+                },
+                createMarker: function(i, wp, nWps) {
+                    // Custom Markers for Start/End
+                    if (i === 0) {
+                        return L.marker(wp.latLng).bindPopup(`<b>Start:</b> ${from}`).openPopup();
+                    } else if (i === nWps - 1) {
+                        return L.marker(wp.latLng).bindPopup(`<b>End:</b> ${to}`).openPopup();
+                    }
+                    return null;
+                }
             }).addTo(map);
 
-            // Fit Bounds
-            map.fitBounds(currentRoute.getBounds(), {padding: [50, 50]});
+            // Handle Routing Error (Fallback to straight line)
+            routingControl.on('routingerror', function(e) {
+                console.warn('Routing failed', e);
+                // Fallback: Straight line
+                const routeLine = L.polyline([start, end], {color: '#10b981', weight: 6, opacity: 0.8, dashArray: '10,10'}).addTo(map);
+                carMarker = L.marker(start, {icon: carIcon, zIndexOffset: 1000}).addTo(map);
+                
+                // Simple straight animation
+                let progress = 0;
+                function simpleTick() {
+                    if (!carMarker) return;
+                    progress += 0.002;
+                    if(progress > 1) progress = 0;
+                    const lat = start[0] + (end[0] - start[0]) * progress;
+                    const lng = start[1] + (end[1] - start[1]) * progress;
+                    carMarker.setLatLng([lat, lng]);
+                    requestAnimationFrame(simpleTick);
+                }
+                simpleTick();
+            });
 
-            // Update Overlay
-            document.getElementById('mapOverlay').style.display = 'block';
-            document.getElementById('ovDriver').innerText = driver;
-            document.getElementById('ovFrom').innerText = from;
-            document.getElementById('ovTo').innerText = to;
+            // Listen for route found to animate car
+            routingControl.on('routesfound', function(e) {
+                const routes = e.routes;
+                
+                // Update Overlay
+                document.getElementById('mapOverlay').style.display = 'block';
+                document.getElementById('ovDriver').innerText = driver;
+                document.getElementById('ovFrom').innerText = from;
+                document.getElementById('ovTo').innerText = to;
 
-            // ANIMATE CAR
-            animateCar(car, start, end);
+                // Animate Car along the detailed path coordinates
+                const pathCoords = routes[0].coordinates; 
+                animateCarOnPath(pathCoords);
+            });
         }
 
-        function animateCar(marker, start, end) {
-            let progress = 0;
-            const speed = 0.005; // speed factor
+        function animateCarOnPath(coords) {
+            if (!coords || coords.length === 0) return;
             
-            // Clear any existing animation on this marker context if strictly needed, 
-            // but for simplicity we rely on map clearing in focusRide.
+            // Create car at start if not exists (might have been created in fallback, remove it first)
+            if(carMarker) map.removeLayer(carMarker);
+            carMarker = L.marker(coords[0], {icon: carIcon, zIndexOffset: 1000}).addTo(map);
+
+            let index = 0;
+            // Lower speed = smoother but slower. The points are dense so we can skip a few or just iterate fast.
+            // Let's iterate 1 point per frame.
             
             function tick() {
-                // Check if marker is still on map (in case user switched rides)
-                if(!map.hasLayer(marker)) return; 
-
-                progress += speed;
-                if(progress > 1) progress = 0; // Loop animation
-
-                const lat = start[0] + (end[0] - start[0]) * progress;
-                const lng = start[1] + (end[1] - start[1]) * progress;
-                marker.setLatLng([lat, lng]);
+                if (!carMarker) return;
                 
+                index += 1; // Move to next coordinate point
+                if (index >= coords.length) index = 0; // Loop
+
+                carMarker.setLatLng(coords[index]);
+                
+                // Add a small delay/throttle if needed, or just use rAF
+                // rAF runs at ~60fps. If path has 1000 points, it takes ~16 seconds. Good speed.
                 requestAnimationFrame(tick);
             }
             tick();
         }
 
-        // Init
         loadActiveRides();
-
     </script>
 </body>
 </html>
