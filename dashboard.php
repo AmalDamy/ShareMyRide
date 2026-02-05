@@ -97,18 +97,36 @@ $co2Saved = $ridesTaken * 2.5;
                 <div class="search-card" style="margin-bottom: 2rem; display: block;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                         <h2 style="color: var(--text-dark);">My Published Rides</h2>
-                        <a href="offer_ride.php" class="btn btn-primary"><i class="fas fa-plus"></i> Offer New Ride</a>
+                        
+                        <div style="display: flex; gap: 10px;">
+                             <!-- Toggle Buttons -->
+                             <button id="btnViewActive" onclick="switchView('active')" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Active</button>
+                             <button id="btnViewHistory" onclick="switchView('history')" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.9rem;">History</button>
+                             <a href="offer_ride.php" class="btn btn-outline" style="border-color: var(--primary-teal); color: var(--primary-teal); padding: 0.5rem 1rem;"><i class="fas fa-plus"></i></a>
+                        </div>
                     </div>
                     
+                    <!-- Active Rides List -->
                     <div id="myRidesList">
-                        <!-- Loaded dynamically -->
                         <p style="color: var(--text-gray); text-align: center; padding: 2rem;">Loading rides...</p>
+                    </div>
+
+                    <!-- History (Completed/Deleted) List -->
+                     <div id="myHistoryList" style="display: none;">
+                        <p style="color: var(--text-gray); text-align: center; padding: 2rem;">Loading history...</p>
                     </div>
                 </div>
 
                 <!-- Sidebar: Requests & Bookings -->
-                <div class="search-card" style="display: none; margin-bottom: 2rem; border-left: 4px solid var(--accent-yellow);" id="incomingSection">
-                    <h2 style="color: var(--text-dark); margin-bottom: 1.5rem;">Ride Requests <span class="trip-badge" style="background: var(--error-red); color: white; font-size: 0.8rem;">Action Required</span></h2>
+                <div class="search-card" style="margin-bottom: 2rem; border-left: 4px solid var(--accent-yellow);" id="incomingSection">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2 style="color: var(--text-dark); margin:0; font-size:1.3rem;">Passenger Requests</h2>
+                        <div style="display: flex; gap: 8px;">
+                             <button id="btnReqPending" onclick="switchRequestView('pending')" class="btn btn-primary" style="padding: 0.35rem 0.8rem; font-size: 0.85rem;">Pending</button>
+                             <button id="btnReqHistory" onclick="switchRequestView('history')" class="btn btn-outline" style="padding: 0.35rem 0.8rem; font-size: 0.85rem;">History</button>
+                        </div>
+                    </div>
+                    
                     <div id="incomingRequestsList">
                         <!-- Loaded dynamically -->
                     </div>
@@ -173,19 +191,89 @@ $co2Saved = $ridesTaken * 2.5;
         </div>
     </div>
 
+    <!-- Image Preview Modal (Structured Card) -->
+    <div id="imageModal" class="modal" style="display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(3px); align-items: center; justify-content: center;">
+        
+        <!-- Modal Card -->
+        <div style="background: white; width: 650px; max-width: 95%; border-radius: 16px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); position: relative; display: flex; flex-direction: column;">
+            
+            <!-- Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: #111827;">ID Proof Viewer</h3>
+                <button onclick="document.getElementById('imageModal').style.display='none'" style="background: none; border: none; font-size: 1.5rem; color: #6b7280; cursor: pointer; padding: 0;">&times;</button>
+            </div>
+            
+            <!-- Landscape Viewer Container -->
+            <div style="width: 100%; height: 360px; background: #1f2937; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; margin-bottom: 16px;">
+                <img id="modalImage" style="max-width: 100%; max-height: 100%; object-fit: contain; transition: transform 0.3s ease;">
+            </div>
+            
+            <!-- Footer controls -->
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.85rem; color: #6b7280;">Use rotation if image is sideways</span>
+                <div>
+                     <button onclick="rotateImage()" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.9rem; margin-right: 8px; border-color: #cbd5e1; color: #334155;">
+                        <i class="fas fa-redo"></i> Rotate
+                     </button>
+                     <button onclick="document.getElementById('imageModal').style.display='none'" class="btn btn-primary" style="padding: 0.5rem 1.5rem; font-size: 0.9rem;">Done</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Usage of existing JS for API calls -->
     <script src="js/ride_manager.js?v=<?php echo time(); ?>"></script>
     <script>
+        let currentRotation = 0;
+
+        function openImageModal(src) {
+            const modal = document.getElementById('imageModal');
+            const img = document.getElementById('modalImage');
+            
+            // Reset state
+            currentRotation = 0;
+            img.style.transform = `rotate(0deg)`;
+            
+            img.src = src;
+            modal.style.display = "flex"; // Flex ensures centering
+        }
+        
+        function rotateImage() {
+            const img = document.getElementById('modalImage');
+            currentRotation += 90;
+            img.style.transform = `rotate(${currentRotation}deg)`;
+        }
+        
+        // Safe Event Listener for Modal
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('imageModal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        });
+
         // Init Dashboard with Real API logic
         (async function() {
-            // 1. Load My Published Rides
-            loadMyRides();
+            try {
+                if (typeof RideManager === 'undefined') {
+                    console.error("RideManager is missing. Check js/ride_manager.js");
+                    // System critical error, can't strictly use RideManager.showAlert if it's missing, but let's try or standard alert
+                    alert("System Error: RideManager script not loaded. Please refresh."); 
+                    return;
+                }
 
-            // 2. Load My Bookings (Outgoing Requests)
-            loadMyBookings();
+                // 1. Load My Published Rides
+                await loadMyRides();
 
-            // 3. Load Incoming Requests (If I am a driver)
-            loadIncomingRequests();
+                // 2. Load My Bookings (Outgoing Requests)
+                await loadMyBookings();
+
+                // 3. Load Incoming Requests (If I am a driver)
+                await loadIncomingRequests('pending');
+
+            } catch (err) {
+                console.error("Dashboard Init Error:", err);
+            }
         })();
 
         async function loadMyBookings() {
@@ -283,30 +371,126 @@ $co2Saved = $ridesTaken * 2.5;
             }
         }
 
+        // View Toggle Logic
+        let currentView = 'active';
+
+        function switchView(view) {
+             currentView = view;
+             
+             const btnActive = document.getElementById('btnViewActive');
+             const btnHistory = document.getElementById('btnViewHistory');
+             const listActive = document.getElementById('myRidesList');
+             const listHistory = document.getElementById('myHistoryList');
+
+             if (view === 'active') {
+                 // Update Buttons
+                 btnActive.className = 'btn btn-primary';
+                 btnHistory.className = 'btn btn-outline';
+                 
+                 // Show Active List
+                 listActive.style.display = 'block';
+                 listHistory.style.display = 'none';
+                 
+                 loadMyRides(); // Refresh Active
+             } else {
+                 // Update Buttons
+                 btnActive.className = 'btn btn-outline';
+                 btnHistory.className = 'btn btn-primary';
+                 
+                 // Show History List
+                 listActive.style.display = 'none';
+                 listHistory.style.display = 'block';
+                 
+                 loadMyHistory(); // Load History
+             }
+        }
+
+        async function loadMyHistory() {
+             const container = document.getElementById('myHistoryList');
+             if (!container) return;
+             
+             container.innerHTML = '<p class="text-center" style="color: var(--text-gray); padding: 2rem;">Loading history...</p>';
+
+             try {
+                // Fetch completed and cancelled
+                const rides = await RideManager.getAllRides({ driver_id: 'me', status: 'completed,cancelled' });
+                
+                container.innerHTML = ''; // Clear loading
+                
+                if (!rides || rides.length === 0) {
+                     container.innerHTML = '<p class="text-center" style="color: var(--text-gray); padding: 2rem;">No history found.</p>';
+                     return;
+                }
+                
+                // Reuse render logic or similar
+                renderRideList(rides, container, true);
+             
+             } catch (e) {
+                 console.error("Error loading history:", e);
+                 container.innerHTML = '<p style="color: var(--error-red); text-align: center;">Error loading history.</p>';
+             }
+        }
+
         async function loadMyRides() {
             const container = document.getElementById('myRidesList');
             if (!container) return;
 
             try {
-                // Filter by 'me'
-                const rides = await RideManager.getAllRides({ driver_id: 'me' }); 
+                // Filter by 'me' and ACTIVE status
+                const rides = await RideManager.getAllRides({ driver_id: 'me', status: 'active' }); 
                 container.innerHTML = '';
                 
                 if (!rides || rides.length === 0) {
-                     container.innerHTML = '<p class="text-center" style="color: var(--text-gray); padding: 2rem;">You haven\'t offered any rides yet.</p>';
+                     container.innerHTML = '<p class="text-center" style="color: var(--text-gray); padding: 2rem;">You haven\'t published any active rides.</p>';
                      return;
                 }
                 
-                rides.forEach(ride => {
+                renderRideList(rides, container, false);
+
+            } catch (e) {
+                console.error("Error loading rides:", e);
+                container.innerHTML = '<p style="color: var(--error-red); text-align: center;">Error loading rides. Please refresh.</p>';
+            }
+        }
+
+        // Shared Render Logic
+        function renderRideList(rides, container, isHistory) {
+             rides.forEach(ride => {
                     let statusColor = '#10b981'; 
                     if(ride.seats_available == 0) statusColor = '#ef4444'; 
                     
-                    // Complete Button Logic
-                    let actionBtn = '';
-                    if(ride.status === 'active') {
-                        actionBtn = `<button onclick="completeRide(${ride.ride_id})" class="btn btn-outline" style="border-color: #059669; color: #059669; padding: 0.5rem; margin-right:5px;" title="Mark as Completed"><i class="fas fa-check"></i></button>`;
-                    } else if(ride.status === 'completed') {
-                        actionBtn = `<span class="trip-badge" style="background:#d1fae5; color:#065f46; margin-right:5px;">Completed</span>`;
+                    let activeActions = '';
+                    let statusLabel = '';
+
+                    // 1. Badge Logic
+                    if (ride.status === 'active') {
+                        statusLabel = `<span class="trip-badge" style="background:${statusColor}20; color:${statusColor}">${ride.seats_available} seats left</span>`;
+                    } else if (ride.status === 'completed') {
+                        statusLabel = `<span class="trip-badge" style="background:#d1fae5; color:#065f46;">Completed</span>`;
+                    } else if (ride.status === 'cancelled') {
+                        statusLabel = `<span class="trip-badge" style="background:#fee2e2; color:#b91c1c;">Cancelled</span>`;
+                    }
+
+                    // 2. Button Logic
+                    if (!isHistory) {
+                         // Active Actions
+                        activeActions = `
+                            <button onclick="completeRide(${ride.ride_id})" class="btn btn-outline" style="border-color: #059669; color: #059669; padding: 0.5rem; margin-right:5px;" title="Mark as Completed"><i class="fas fa-check"></i></button>
+                            <a href="edit_ride.php?id=${ride.ride_id}" class="btn btn-outline" style="border-color: var(--primary-teal); color: var(--primary-teal); padding: 0.5rem; margin-right: 5px;" title="Edit Ride">
+                                     <i class="fas fa-edit"></i>
+                            </a>
+                            <button onclick="deleteRide(${ride.ride_id})" class="btn btn-outline" style="border-color: var(--error-red); color: var(--error-red); padding: 0.5rem;" title="Cancel Ride">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        `;
+                    } else {
+                        // History Actions (Maybe delete permanently? Or just view?)
+                        // For now just View
+                         activeActions = `
+                            <button disabled class="btn btn-outline" style="border-color: #ccc; color: #ccc; padding: 0.5rem; cursor: not-allowed;" title="Archived">
+                                <i class="fas fa-archive"></i>
+                            </button>
+                        `;
                     }
 
                     // Title Logic (Long Trip vs Regular)
@@ -315,14 +499,13 @@ $co2Saved = $ridesTaken * 2.5;
                     let typeBadge = '';
 
                     if (ride.ride_type === 'long') {
-                        // For long trips, title is the Details (Trip Name), subtitle is Route
                         displayTitle = ride.details || 'Long Trip';
                         subTitle = `<div style="font-size: 0.95rem; color: var(--primary-teal); margin-bottom: 0.25rem;"><i class="fas fa-route"></i> ${ride.from_location} → ${ride.to_location}</div>`;
                         typeBadge = `<span class="trip-badge" style="background: var(--dark-teal); color: white; margin-right: 5px;">Long Trip</span>`;
                     }
 
                     container.innerHTML += `
-                        <div class="trip-card" style="margin-bottom: 1rem; border: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; padding: 1.5rem;">
+                        <div class="trip-card" style="margin-bottom: 1rem; border: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; opacity: ${isHistory ? 0.8 : 1}; background: ${isHistory ? '#f9fafb' : 'white'};">
                             <div>
                                 <h3 style="font-size: 1.2rem; color: var(--dark-teal); margin-bottom: 0.5rem;">${displayTitle}</h3>
                                 ${subTitle}
@@ -331,30 +514,21 @@ $co2Saved = $ridesTaken * 2.5;
                                 </div>
                                 <div style="margin-top: 0.5rem;">
                                     ${typeBadge}
-                                    <span class="trip-badge" style="background:${statusColor}20; color:${statusColor}">${ride.seats_available} seats left</span>
+                                    ${statusLabel}
                                     <span class="trip-badge" style="background: #f3f4f6; color: var(--text-dark);">₹${ride.price_per_seat}</span>
                                 </div>
                             </div>
                             <div>
-                                ${actionBtn}
-                                <a href="edit_ride.php?id=${ride.ride_id}" class="btn btn-outline" style="border-color: var(--primary-teal); color: var(--primary-teal); padding: 0.5rem; margin-right: 5px;" title="Edit Ride">
-                                     <i class="fas fa-edit"></i>
-                                </a>
-                                <button onclick="deleteRide(${ride.ride_id})" class="btn btn-outline" style="border-color: var(--error-red); color: var(--error-red); padding: 0.5rem;" title="Delete Ride">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                                ${activeActions}
                             </div>
                         </div>
                     `;
                 });
-            } catch (e) {
-                console.error("Error loading rides:", e);
-                container.innerHTML = '<p style="color: var(--error-red); text-align: center;">Error loading rides. Please refresh.</p>';
-            }
         }
 
         async function completeRide(rideId) {
-            if(!confirm("Are you sure you want to mark this ride as completed?")) return;
+            const confirmed = await RideManager.showConfirm("Complete Ride?", "Are you sure you want to mark this ride as completed?");
+            if(!confirmed) return;
             try {
                 const res = await fetch('api_rides.php', {
                     method: 'POST',
@@ -363,10 +537,10 @@ $co2Saved = $ridesTaken * 2.5;
                 });
                 const data = await res.json();
                 if(data.success) {
-                    alert(data.message);
+                    await RideManager.showAlert('Ride Completed', data.message, 'success');
                     loadMyRides(); // Refresh the list
                 } else {
-                    alert(data.message);
+                    await RideManager.showAlert('Error', data.message, 'error');
                 }
             } catch(e) { console.error(e); }
         }
@@ -374,7 +548,8 @@ $co2Saved = $ridesTaken * 2.5;
         // ... ...
 
         async function confirmArrival(reqId) {
-            if(!confirm("Have you arrived safely? This will complete the trip and allow you to rate the driver.")) return;
+            const confirmed = await RideManager.showConfirm("Confirm Arrival?", "Have you arrived safely? This will complete the trip and allow you to rate the driver.");
+            if(!confirmed) return;
             try {
                 const res = await fetch('api_requests.php', {
                     method: 'POST',
@@ -386,53 +561,128 @@ $co2Saved = $ridesTaken * 2.5;
                     // Redirect directly to rating
                     window.location.href = `rate_ride.php?request_id=${reqId}`;
                 } else {
-                    alert(data.message);
+                    await RideManager.showAlert('Error', data.message, 'error');
                 }
             } catch(e) { console.error(e); }
         }
 
-        async function loadIncomingRequests() {
-            const container = document.getElementById('incomingRequestsList'); 
-            if(!container) return; 
+        let currentRequestView = 'pending';
 
+        function switchRequestView(view) {
+            currentRequestView = view;
+            
+            const btnPending = document.getElementById('btnReqPending');
+            const btnHistory = document.getElementById('btnReqHistory');
+            
+            if(view === 'pending') {
+                 btnPending.className = 'btn btn-primary';
+                 btnHistory.className = 'btn btn-outline';
+            } else {
+                 btnPending.className = 'btn btn-outline';
+                 btnHistory.className = 'btn btn-primary';
+            }
+            
+            loadIncomingRequests(view);
+        }
+
+        async function loadIncomingRequests(filter = 'pending') {
+            const container = document.getElementById('incomingRequestsList'); 
+            const section = document.getElementById('incomingSection');
+            if(!container) return; 
+            
+            container.innerHTML = '<div style="text-align:center; padding:1rem; color:#9ca3af;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+            
+            // If checking pending initially, we might hide the section if empty. 
+            // BUT if we have buttons now, maybe we should always show the section if the user is a driver?
+            // Since we don't know if they are a driver easily without checking rides, let's just show it if data comes back.
+            // Actually, best to just keep it hidden until we find at least one request (pending OR history).
+            // But checking history everytime on load might be overkill.
+            // Let's stick to: Show section if we have results.
+            
             try {
-                const response = await fetch('api_requests.php?type=incoming');
+                const response = await fetch(`api_requests.php?type=incoming&filter=${filter}`);
                 const data = await response.json();
                 
                 // Clear previous content
                 container.innerHTML = '';
-                const section = document.getElementById('incomingSection');
 
                 if (data.success && data.requests.length > 0) {
                     let html = '';
                     data.requests.forEach(req => {
+                        let proofDisplay = '';
+                        // Always show ID info if available
+                        let idInfo = '';
+                        if (req.id_type) {
+                            idInfo = `<div style="margin-bottom: 5px; font-size: 0.85rem; color: #4b5563;">
+                                        <strong>${req.id_type}</strong>: ${req.id_number || 'N/A'}
+                                      </div>`;
+                        }
+
+                        if (req.proof_image) {
+                            proofDisplay = `
+                            <button onclick="openImageModal('${req.proof_image}')" class="btn btn-outline" style="padding: 0.4rem 1rem; font-size: 0.8rem; height: auto; display: inline-flex; align-items: center; border-color: #94a3b8; color: #475569; margin-right: 0.5rem;">
+                                <i class="fas fa-file-invoice" style="margin-right:0.3rem;"></i> View Proof
+                            </button>`;
+                        }
+
+                        // Actions vs Status
+                        let actionArea = '';
+                        if (filter === 'pending') {
+                            actionArea = `
+                            <div style="display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center; margin-top: 0.5rem;">
+                                ${proofDisplay}
+                                <button onclick="handleRequest('reject', ${req.request_id})" class="btn btn-outline" style="padding: 0.4rem 1rem; font-size: 0.9rem; color: var(--error-red); border-color: var(--error-red);">Reject</button>
+                                <button onclick="handleRequest('accept', ${req.request_id})" class="btn btn-primary" style="padding: 0.4rem 1rem; font-size: 0.9rem;">Accept</button>
+                            </div>`;
+                        } else {
+                            // History View
+                            let statusBadge = '';
+                            if(req.status === 'accepted' || req.status === 'completed') statusBadge = '<span class="trip-badge" style="background:#d1fae5; color:#065f46;">Accepted</span>';
+                            else if(req.status === 'rejected') statusBadge = '<span class="trip-badge" style="background:#fee2e2; color:#b91c1c;">Rejected</span>';
+                            else statusBadge = `<span class="trip-badge">${req.status}</span>`;
+
+                            actionArea = `
+                            <div style="display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center; margin-top: 0.5rem;">
+                                ${proofDisplay}
+                                ${statusBadge}
+                            </div>`;
+                        }
+                       
                          html += `
                         <div class="trip-card" style="margin-bottom: 1rem; background: #fff; border: 1px solid #e0e7ff; padding: 1rem; border-radius: 8px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
                                 <div>
                                     <span style="font-weight: 700; color:var(--text-dark);"><i class="fas fa-user"></i> ${req.passenger_name}</span>
                                     <span style="color: var(--text-gray); font-size: 0.9rem; margin-left: 10px;">requested ${req.seats_requested} seat(s)</span>
                                 </div>
                                 <div style="font-size:0.85rem; color:var(--text-gray);">${req.from_location} → ${req.to_location}</div>
                             </div>
-                            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-                                <button onclick="handleRequest('reject', ${req.request_id})" class="btn btn-outline" style="padding: 0.4rem 1rem; font-size: 0.9rem; color: var(--error-red); border-color: var(--error-red);">Reject</button>
-                                <button onclick="handleRequest('accept', ${req.request_id})" class="btn btn-primary" style="padding: 0.4rem 1rem; font-size: 0.9rem;">Accept</button>
-                            </div>
+                            
+                            ${idInfo}
+
+                            ${actionArea}
                         </div>`;
                     });
                     container.innerHTML = html;
                     section.style.display = 'block';
                 } else {
-                    // Hide section if no incoming requests to avoid clutter
-                    section.style.display = 'none'; 
-                    // container.innerHTML = '<p style="color: var(--text-gray);">No new requests.</p>'; // Clean fallback if we wanted to keep it visible
+                    if (filter === 'pending') {
+                        // Only hide if pending is empty AND we haven't manually switched?
+                        // Actually, if pending is empty, we might still want to see history.
+                        // But for now, let's show a message if manually switched, or hide if initial load.
+                        container.innerHTML = '<p style="color: var(--text-gray); text-align: center; padding: 1rem;">No pending requests.</p>';
+                        // We keep display block so user can click History
+                         section.style.display = 'block'; 
+                    } else {
+                         container.innerHTML = '<p style="color: var(--text-gray); text-align: center; padding: 1rem;">No request history.</p>';
+                    }
                 }
             } catch (e) { console.error(e); }
         }
 
         async function handleRequest(action, reqId) {
-            if(!confirm(`Are you sure you want to ${action} this request?`)) return;
+            const confirmed = await RideManager.showConfirm(`${action.charAt(0).toUpperCase() + action.slice(1)} Request?`, `Are you sure you want to ${action} this request?`);
+            if(!confirmed) return;
 
             try {
                 const response = await fetch('api_requests.php', {
@@ -442,16 +692,17 @@ $co2Saved = $ridesTaken * 2.5;
                 });
                 const res = await response.json();
                 if(res.success) {
-                    alert(res.message);
-                    loadIncomingRequests(); // Refresh
+                    await RideManager.showAlert('Success', res.message, 'success');
+                    loadIncomingRequests('pending'); // Refresh (default filter)
                 } else {
-                    alert(res.message);
+                    await RideManager.showAlert('Error', res.message, 'error');
                 }
             } catch(e) { console.error(e); }
         }
         
         async function deleteRide(id) {
-            if(!confirm('Are you sure you want to delete this ride? This cannot be undone.')) return;
+            const confirmed = await RideManager.showConfirm("Delete Ride?", "Are you sure you want to delete this ride? This cannot be undone.");
+            if(!confirmed) return;
             
             try {
                 const res = await fetch('api_rides.php', {
@@ -464,7 +715,7 @@ $co2Saved = $ridesTaken * 2.5;
                     // Remove from UI immediately or reload
                     loadMyRides();
                 } else {
-                    alert(data.message);
+                    await RideManager.showAlert('Error', data.message, 'error');
                 }
             } catch(e) { console.error(e); }
         }

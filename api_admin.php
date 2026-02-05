@@ -38,10 +38,16 @@ if ($method === 'GET') {
         $res = $conn->query("SELECT COUNT(*) as c FROM users WHERE is_verified = 0");
         $stats['pending_verifications'] = $res->fetch_assoc()['c'];
 
-        // Revenue (Mock calculation: sum of all ride 'prices' * taken seats? 
-        // For simplicity, let's just sum potential value of all active rides)
-        $res = $conn->query("SELECT SUM(price_per_seat * seats_available) as revenue FROM rides");
-        $stats['total_revenue'] = '₹' . number_format($res->fetch_assoc()['revenue'] ?? 0);
+        // Revenue (Based on actual bookings: count of accepted/completed requests * ride price)
+        // We join rides and ride_requests to calculate this
+        $res = $conn->query("
+            SELECT SUM(r.price_per_seat * rq.seats_requested) as actual_revenue 
+            FROM ride_requests rq
+            JOIN rides r ON rq.ride_id = r.ride_id
+            WHERE rq.status IN ('accepted', 'completed')
+        ");
+        $revenue = $res->fetch_assoc()['actual_revenue'] ?? 0;
+        $stats['total_revenue'] = '₹' . number_format($revenue);
 
         echo json_encode(['success' => true, 'stats' => $stats]);
 

@@ -199,20 +199,62 @@ if (!isset($_SESSION['user_id'])) {
             className: 'custom-div-icon', iconSize: [30, 30], iconAnchor: [15, 15]
         });
 
-        // City Coordinates Mock
+        // City Coordinates Mock (Cache)
         const cities = {
             'kochi': [9.9312, 76.2673],
             'munnar': [10.0889, 77.0595],
             'trivandrum': [8.5241, 76.9366],
+            'thiruvananthapuram': [8.5241, 76.9366],
             'thrissur': [10.5276, 76.2144],
             'kozhikode': [11.2588, 75.7804],
             'alappuzha': [9.4981, 76.3388],
-            'kottayam': [9.5916, 76.5222]
+            'kottayam': [9.5916, 76.5222],
+            'kollam': [8.8932, 76.6141],
+            'palakkad': [10.7867, 76.6548],
+            'wayanad': [11.6854, 76.1320],
+            'kannur': [11.8745, 75.3704],
+            'kasaragod': [12.5102, 74.9852],
+            'idukki': [9.8494, 76.9809],
+            'pathanamthitta': [9.2648, 76.7870],
+            'malappuram': [11.0510, 76.0711],
+            'eranakulam': [9.9816, 76.2999], 
+            'ernakulam': [9.9816, 76.2999],
+            
+            // New Additions
+            'ponkunnam': [9.5667, 76.7667],
+            'ponnkunnam': [9.5667, 76.7667],
+            'koovapally': [9.5500, 76.8167], 
+            'kanjirapally': [9.5556, 76.7861],
+            'pala': [9.7112, 76.6806]
         };
 
-        function getCoords(city) {
-             const key = city.toLowerCase().split(' ')[0]; // Simple fuzzy match
-             return cities[key] || [10.0 + Math.random(), 76.3 + Math.random()]; // Default/Random
+        async function getCoords(city) {
+             if(!city) return [10.0, 76.3]; // Default fallback
+             
+             const key = city.toLowerCase().trim();
+             
+             // 1. Try Local Dictionary
+             if(cities[key]) return cities[key];
+             const splitKey = key.split(' ')[0];
+             if(cities[splitKey]) return cities[splitKey];
+
+             // 2. Try Nominatim API (OpenStreetMap)
+             try {
+                 console.log(`Fetching coords for: ${city}`);
+                 // Add user-agent header as per Nominatim usage policy (best practice, browser sends one but good to be explicit/standard)
+                 const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`);
+                 const data = await response.json();
+                 if(data && data.length > 0) {
+                     return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+                 }
+             } catch(e) {
+                 console.warn("Geocoding failed for", city, e);
+             }
+
+             // 3. Fallback with Jitter
+             // If we fail, return standard fallback but add tiny random jitter 
+             // so if start & end both fail, they aren't the EXACT same point (which prevents line drawing)
+             return [10.0 + (Math.random() * 0.01), 76.3 + (Math.random() * 0.01)]; 
         }
 
         // Fetch Data
@@ -233,7 +275,7 @@ if (!isset($_SESSION['user_id'])) {
             } catch(e) { console.error(e); }
         })();
 
-        function initTracking(ride) {
+        async function initTracking(ride) {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('content').style.display = 'block';
 
@@ -250,8 +292,8 @@ if (!isset($_SESSION['user_id'])) {
             }
 
             // Map Logic
-            const start = getCoords(ride.from_location);
-            const end = getCoords(ride.to_location);
+            const start = await getCoords(ride.from_location);
+            const end = await getCoords(ride.to_location);
 
             const carMarker = L.marker(start, {icon: carIcon}).addTo(map);
             L.marker(end).addTo(map).bindPopup("Destination");
@@ -259,27 +301,45 @@ if (!isset($_SESSION['user_id'])) {
             const route = L.polyline([start, end], { color: '#009688', weight: 5, dashArray: '10,10' }).addTo(map);
             map.fitBounds(route.getBounds(), {padding: [50, 50]});
 
-            // Simulate Movement
+            // Simulate Movement (Restart on Refresh)
             let progress = 0;
             const speed = 0.002;
             
-            setInterval(() => {
-                progress += speed;
-                if(progress > 1) progress = 0; // Loop for demo
-
-                const lat = start[0] + (end[0] - start[0]) * progress;
-                const lng = start[1] + (end[1] - start[1]) * progress;
-                
+            function updateCar(p) {
+                const lat = start[0] + (end[0] - start[0]) * p;
+                const lng = start[1] + (end[1] - start[1]) * p;
                 carMarker.setLatLng([lat, lng]);
                 
-                // Update ETA display
-                const mins = Math.round(30 * (1 - progress));
+                // Update ETA
+                const mins = Math.max(0, Math.round(30 * (1 - p)));
                 document.getElementById('eta').innerText = mins + ' min';
+            }
+            
+            function setArrived() {
+                 document.getElementById('rideStatus').innerText = "Arrived";
+                 document.getElementById('rideStatus').className = "status-badge status-active"; 
+                 document.getElementById('rideStatus').style.animation = "none";
+                 document.getElementById('eta').innerText = "Arrived";
+                 updateCar(1);
+            }
 
-                // Occasional Re-center
-                if(Math.random() > 0.98) map.panTo([lat, lng]);
+            // Start Animation
+            const interval = setInterval(() => {
+                progress += speed;
 
+                if (progress >= 1) {
+                    progress = 1;
+                    setArrived();
+                    clearInterval(interval); // Stop animation at end
+                } else {
+                    updateCar(progress);
+                    // Occasional Re-center
+                    if(Math.random() > 0.98) map.panTo(carMarker.getLatLng());
+                }
             }, 100);
+            
+            // Initial positioning
+            updateCar(progress);
         }
     </script>
 </body>

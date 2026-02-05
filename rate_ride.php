@@ -90,7 +90,7 @@ if (!isset($_SESSION['user_id'])) {
             
             const rating = document.querySelector('input[name="rating"]:checked');
             if(!rating) {
-                alert("Please select a star rating!");
+                await RideManager.showAlert('Rating Required', "Please select a star rating!", 'error');
                 return;
             }
             
@@ -117,10 +117,10 @@ if (!isset($_SESSION['user_id'])) {
                 const res = await response.json();
                 
                 if(res.success) {
-                    alert('Thank you for your feedback!');
+                    await RideManager.showAlert('Review Submitted', 'Thank you for your feedback!', 'success');
                     window.location.href = 'dashboard.php';
                 } else {
-                    alert('Error: ' + res.message);
+                    await RideManager.showAlert('Submission Error', res.message, 'error');
                     btn.disabled = false;
                     btn.innerHTML = 'Submit Feedback';
                 }

@@ -12,13 +12,22 @@ if ($method === 'POST') {
         exit;
     }
 
-    $data = json_decode(file_get_contents('php://input'), true);
+    // Parse Input (JSON or FormData)
+    $input = json_decode(file_get_contents('php://input'), true);
+    if (json_last_error() === JSON_ERROR_NONE) {
+        $data = $input;
+    } else {
+        $data = $_POST;
+    }
+
     $action = $data['action'] ?? 'create'; // create, accept, reject
 
     if ($action === 'create') {
         // Passenger requesting a ride
         $ride_id = $data['ride_id'] ?? 0;
         $seats = $data['seats_requested'] ?? 1;
+        $id_type = $data['id_type'] ?? null;
+        $id_number = $data['id_number'] ?? null;
         $passenger_id = $_SESSION['user_id'];
 
         // Check if already requested
@@ -40,8 +49,33 @@ if ($method === 'POST') {
             }
         }
 
-        $stmt = $conn->prepare("INSERT INTO ride_requests (ride_id, passenger_id, seats_requested) VALUES (?, ?, ?)");
-        $stmt->bind_param("iii", $ride_id, $passenger_id, $seats);
+        // Handle Proof Image Upload
+        $proof_path = null;
+        if (isset($_FILES['proof_image']) && $_FILES['proof_image']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = 'uploads/proofs/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+            
+            $fileInfo = pathinfo($_FILES['proof_image']['name']);
+            $ext = strtolower($fileInfo['extension']);
+            $allowed = ['jpg', 'jpeg', 'png', 'pdf'];
+            
+            if (in_array($ext, $allowed)) {
+                $uniqueName = 'proof_' . $ride_id . '_' . $passenger_id . '_' . time() . '.' . $ext;
+                $targetFile = $uploadDir . $uniqueName;
+                
+                if (move_uploaded_file($_FILES['proof_image']['tmp_name'], $targetFile)) {
+                    $proof_path = $targetFile;
+                }
+            }
+        }
+        
+        // New Fields
+        $pickup_loc = $data['pickup_loc'] ?? null;
+        $drop_loc = $data['drop_loc'] ?? null;
+        $final_price = $data['final_price'] ?? 0;
+
+        $stmt = $conn->prepare("INSERT INTO ride_requests (ride_id, passenger_id, seats_requested, proof_image, id_type, id_number, pickup_loc, drop_loc, final_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("iiisssssd", $ride_id, $passenger_id, $seats, $proof_path, $id_type, $id_number, $pickup_loc, $drop_loc, $final_price);
 
         if ($stmt->execute()) {
             
@@ -172,12 +206,19 @@ if ($method === 'POST') {
 
     if ($type === 'incoming') {
         // Requests FOR this user (Driver)
+        $filter = $_GET['filter'] ?? 'pending';
+        
+        $statusClause = "AND rq.status = 'pending'";
+        if ($filter === 'history') {
+             $statusClause = "AND rq.status IN ('accepted', 'rejected', 'completed')";
+        }
+
         $sql = "SELECT rq.*, r.from_location, r.to_location, r.ride_date, r.ride_time, 
                        u.name as passenger_name, u.email as passenger_email, u.profile_pic, u.rating 
                 FROM ride_requests rq 
                 JOIN rides r ON rq.ride_id = r.ride_id 
                 JOIN users u ON rq.passenger_id = u.user_id 
-                WHERE r.driver_id = ? AND rq.status = 'pending'
+                WHERE r.driver_id = ? $statusClause
                 ORDER BY rq.created_at DESC";
     } else {
         // Requests BY this user (Passenger)

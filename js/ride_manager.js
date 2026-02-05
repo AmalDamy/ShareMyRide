@@ -157,6 +157,45 @@ const RideManager = {
         `;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
 
+        // --- INJECT CUSTOM CONFIRMATION MODAL ---
+        const confirmHtml = `
+            <div id="customConfirmModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:10010; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
+                <div style="background:white; width:90%; max-width:400px; border-radius:16px; padding:24px; text-align:center; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); animation: zoomIn 0.2s ease-out; display:flex; flex-direction:column; gap:16px;">
+                    <div style="width:60px; height:60px; background:#f0fdf4; color:#16a34a; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.75rem; margin:0 auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                        <i class="fas fa-check-double"></i>
+                    </div>
+                    <div>
+                        <h3 id="confirmTitle" style="margin:0; font-size:1.25rem; font-weight:700; color:#1f2937;">Confirm Action</h3>
+                        <p id="confirmMessage" style="margin:8px 0 0; color:#6b7280; font-size:0.95rem; line-height:1.5;">Are you sure you want to proceed?</p>
+                    </div>
+                    <div style="display:flex; gap:12px; justify-content:center; margin-top:12px;">
+                        <button id="btnConfirmCancel" style="flex:1; padding:12px; border:1px solid #d1d5db; background:white; color:#374151; border-radius:8px; cursor:pointer; font-weight:600; transition:all 0.2s;">Cancel</button>
+                        <button id="btnConfirmOk" style="flex:1; padding:12px; border:none; background:#10b981; color:white; border-radius:8px; cursor:pointer; font-weight:600; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3); transition:all 0.2s;">Yes, Confirm</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', confirmHtml);
+
+        // --- INJECT CUSTOM ALERT MODAL ---
+        const alertHtml = `
+            <div id="customAlertModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:10020; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
+                <div style="background:white; width:90%; max-width:400px; border-radius:16px; padding:24px; text-align:center; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); animation: zoomIn 0.2s ease-out; display:flex; flex-direction:column; gap:16px;">
+                    <div id="alertIconBox" style="width:60px; height:60px; background:#f0fdf4; color:#16a34a; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.75rem; margin:0 auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                        <i id="alertIcon" class="fas fa-check"></i>
+                    </div>
+                    <div>
+                        <h3 id="alertTitle" style="margin:0; font-size:1.25rem; font-weight:700; color:#1f2937;">Success</h3>
+                        <p id="alertMessage" style="margin:8px 0 0; color:#6b7280; font-size:0.95rem; line-height:1.5;">Operation successful.</p>
+                    </div>
+                    <div style="display:flex; justify-content:center; margin-top:12px;">
+                        <button id="btnAlertOk" style="width:100%; padding:12px; border:none; background:#10b981; color:white; border-radius:8px; cursor:pointer; font-weight:600; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3); transition:all 0.2s;">OK</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', alertHtml);
+
         // Close on outside click
         document.getElementById('notificationModal').onclick = (e) => {
             if (e.target.id === 'notificationModal') this.toggleModal();
@@ -171,6 +210,81 @@ const RideManager = {
         document.body.style.overflow = isHidden ? 'hidden' : ''; // Prevent body scroll
 
         if (isHidden) this.renderModalList(); // Refresh content on open
+    },
+
+    // --- CUSTOM CONFIRM HELPER ---
+    showConfirm: function (title, message) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('customConfirmModal');
+            if (!modal) {
+                if (confirm(message)) resolve(true);
+                else resolve(false);
+                return;
+            }
+
+            document.getElementById('confirmTitle').innerText = title;
+            document.getElementById('confirmMessage').innerText = message;
+            modal.style.display = 'flex';
+
+            const close = () => { modal.style.display = 'none'; };
+
+            const onOk = () => { close(); resolve(true); cleanup(); };
+            const onCancel = () => { close(); resolve(false); cleanup(); };
+
+            const cleanup = () => {
+                btnOk.removeEventListener('click', onOk);
+                btnCancel.removeEventListener('click', onCancel);
+            }
+
+            const btnOk = document.getElementById('btnConfirmOk');
+            const btnCancel = document.getElementById('btnConfirmCancel');
+
+            btnOk.addEventListener('click', onOk);
+            btnCancel.addEventListener('click', onCancel);
+        });
+    },
+
+    // --- CUSTOM ALERT HELPER ---
+    showAlert: function (title, message, type = 'success') {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('customAlertModal');
+            if (!modal) {
+                alert(message);
+                resolve();
+                return;
+            }
+
+            // Custom Styling based on Type
+            const iconBox = document.getElementById('alertIconBox');
+            const icon = document.getElementById('alertIcon');
+            const btn = document.getElementById('btnAlertOk');
+
+            if (type === 'error') {
+                iconBox.style.background = '#fef2f2';
+                iconBox.style.color = '#dc2626';
+                icon.className = 'fas fa-times';
+                btn.style.background = '#dc2626';
+                btn.style.boxShadow = '0 4px 6px -1px rgba(220, 38, 38, 0.3)';
+            } else {
+                iconBox.style.background = '#f0fdf4';
+                iconBox.style.color = '#16a34a';
+                icon.className = 'fas fa-check';
+                btn.style.background = '#10b981';
+                btn.style.boxShadow = '0 4px 6px -1px rgba(16, 185, 129, 0.3)';
+            }
+
+            document.getElementById('alertTitle').innerText = title;
+            document.getElementById('alertMessage').innerText = message;
+            modal.style.display = 'flex';
+
+            const onOk = () => {
+                modal.style.display = 'none';
+                btn.removeEventListener('click', onOk);
+                resolve();
+            };
+
+            btn.addEventListener('click', onOk);
+        });
     },
 
     pollNotifications: async function () {
@@ -294,7 +408,9 @@ const RideManager = {
     },
 
     markAllRead: async function () {
-        if (!confirm("Mark all notifications as read?")) return;
+        const confirmed = await this.showConfirm("Mark all as read?", "This will clear the unread status of all your notifications.");
+        if (!confirmed) return;
+
         try {
             await fetch('api_notifications.php', {
                 method: 'POST',

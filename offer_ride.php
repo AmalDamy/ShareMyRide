@@ -58,6 +58,12 @@ if (!isset($_SESSION['user_id'])) {
                     </div>
                 </div>
 
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label>Intermediate Stops (Optional)</label>
+                    <input type="text" id="offerStops" class="form-input" placeholder="e.g. Kanjirapally, Ponkunnam (Comma separated)">
+                    <span style="font-size: 0.8rem; color: var(--text-gray);">Adding stops helps passengers find your ride easier.</span>
+                </div>
+
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                     <div class="form-group">
                         <label>Date *</label>
@@ -137,6 +143,32 @@ if (!isset($_SESSION['user_id'])) {
             }
         }
 
+        // Vehicle -> Seat Logic
+        const vehicleSelect = document.getElementById('vehicleType');
+        const seatsSelect = document.getElementById('offerSeats');
+
+        if (vehicleSelect && seatsSelect) {
+            vehicleSelect.addEventListener('change', function() {
+                const type = this.value;
+                let maxSeats = 4; // Default Car
+                
+                if (type === 'bike') maxSeats = 1;
+                else if (type === 'suv') maxSeats = 6;
+                else if (type === 'car') maxSeats = 4;
+                
+                // Clear existing options
+                seatsSelect.innerHTML = '<option value="">Select</option>';
+                
+                // Populate based on max
+                for (let i = 1; i <= maxSeats; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.text = i;
+                    seatsSelect.appendChild(option);
+                }
+            });
+        }
+        
         // Helper to clear all errors
         function clearErrors() {
             const inputs = document.querySelectorAll('.form-input');
@@ -235,7 +267,8 @@ if (!isset($_SESSION['user_id'])) {
                 // Save Ride via API
                 const rideData = {
                     from, to, date, time, vehicle, seats, price,
-                    details: document.getElementById('offerDetails').value
+                    details: document.getElementById('offerDetails').value,
+                    stops: document.getElementById('offerStops').value.trim()
                 };
                 
                 // Debug log

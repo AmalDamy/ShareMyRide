@@ -123,20 +123,28 @@
                 </div>
 
                 <!-- Social Media -->
+                <!-- Social Media -->
                 <div style="margin-top: 2rem;">
-                    <h3 style="margin-bottom: 1rem;">Follow Us</h3>
+                    <h3 style="margin-bottom: 1rem; color: var(--dark-teal);">Follow Us</h3>
                     <div style="display: flex; gap: 1rem;">
-                        <a href="#" style="width: 40px; height: 40px; background: var(--primary-teal); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: var(--transition);">
-                            <i class="fab fa-facebook-f"></i>
+                        <!-- Facebook -->
+                        <a href="#" style="width: 45px; height: 45px; background: #3b5998; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 6px rgba(59, 89, 152, 0.3);" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 12px rgba(59, 89, 152, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(59, 89, 152, 0.3)'">
+                            <i class="fab fa-facebook-f" style="font-size: 1.2rem;"></i>
                         </a>
-                        <a href="#" style="width: 40px; height: 40px; background: var(--primary-teal); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: var(--transition);">
-                            <i class="fab fa-instagram"></i>
+                        
+                        <!-- Instagram -->
+                        <a href="#" style="width: 45px; height: 45px; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 6px rgba(220, 39, 67, 0.3);" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 12px rgba(220, 39, 67, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(220, 39, 67, 0.3)'">
+                            <i class="fab fa-instagram" style="font-size: 1.2rem;"></i>
                         </a>
-                        <a href="#" style="width: 40px; height: 40px; background: var(--primary-teal); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: var(--transition);">
-                            <i class="fab fa-twitter"></i>
+                        
+                        <!-- Twitter/X -->
+                        <a href="#" style="width: 45px; height: 45px; background: #1DA1F2; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 6px rgba(29, 161, 242, 0.3);" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 12px rgba(29, 161, 242, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(29, 161, 242, 0.3)'">
+                            <i class="fab fa-twitter" style="font-size: 1.2rem;"></i>
                         </a>
-                        <a href="#" style="width: 40px; height: 40px; background: var(--primary-teal); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: var(--transition);">
-                            <i class="fab fa-linkedin-in"></i>
+                        
+                        <!-- LinkedIn -->
+                        <a href="#" style="width: 45px; height: 45px; background: #0077b5; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 6px rgba(0, 119, 181, 0.3);" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 12px rgba(0, 119, 181, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px rgba(0, 119, 181, 0.3)'">
+                            <i class="fab fa-linkedin-in" style="font-size: 1.2rem;"></i>
                         </a>
                     </div>
                 </div>

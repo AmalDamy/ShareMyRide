@@ -12,10 +12,24 @@ if ($method === 'GET') {
     $date = $_GET['date'] ?? '';
     $type = $_GET['type'] ?? ''; // Default to ALL types (empty)
 
+    $status_filter = $_GET['status'] ?? 'active';
+
     $sql = "SELECT r.*, u.name as driver_name, u.rating, u.profile_pic 
             FROM rides r 
             JOIN users u ON r.driver_id = u.user_id 
-            WHERE r.status = 'active'";
+            WHERE 1=1";
+    
+    // Default to active unless 'all' is specified or specific status
+    if ($status_filter !== 'all') {
+        // If status is comma separated (e.g. 'completed,cancelled')
+        if (strpos($status_filter, ',') !== false) {
+            $statuses = explode(',', $status_filter);
+            $status_list = "'" . implode("','", array_map('trim', $statuses)) . "'";
+            $sql .= " AND r.status IN ($status_list)";
+        } else {
+            $sql .= " AND r.status = '$status_filter'";
+        }
+    }
     
     // Filter by Type (only if specified)
     if(!empty($type)) {
@@ -36,14 +50,16 @@ if ($method === 'GET') {
     $types = "";
 
     if (!empty($from)) {
-        $sql .= " AND r.from_location LIKE ?";
+        $sql .= " AND (r.from_location LIKE ? OR r.intermediate_stops LIKE ?)";
         $params[] = "%$from%";
-        $types .= "s";
+        $params[] = "%$from%";
+        $types .= "ss";
     }
     if (!empty($to)) {
-        $sql .= " AND r.to_location LIKE ?";
+        $sql .= " AND (r.to_location LIKE ? OR r.intermediate_stops LIKE ?)";
         $params[] = "%$to%";
-        $types .= "s";
+        $params[] = "%$to%";
+        $types .= "ss";
     }
     if (!empty($date)) {
         $sql .= " AND r.ride_date = ?";
@@ -205,13 +221,14 @@ if ($method === 'GET') {
         $price = $input['price'] ?? 0;
         $vehicle = $input['vehicle'] ?? '';
         $details = $input['details'] ?? '';
+        $stops = $input['stops'] ?? '';
         
         // Optional: Block update if there are accepted requests (to avoid conflict)
         // For now, we allow it but it might be good to restrict fundamental changes if bookings exist.
         
-        $sql = "UPDATE rides SET from_location=?, to_location=?, ride_date=?, ride_time=?, seats_available=?, price_per_seat=?, vehicle_type=?, details=? WHERE ride_id=?";
+        $sql = "UPDATE rides SET from_location=?, to_location=?, ride_date=?, ride_time=?, seats_available=?, price_per_seat=?, vehicle_type=?, details=?, intermediate_stops=? WHERE ride_id=?";
         $upd = $conn->prepare($sql);
-        $upd->bind_param("ssssidssi", $from, $to, $date, $time, $seats, $price, $vehicle, $details, $ride_id);
+        $upd->bind_param("ssssidsssi", $from, $to, $date, $time, $seats, $price, $vehicle, $details, $stops, $ride_id);
         
         if($upd->execute()) {
              echo json_encode(['success'=>true, 'message'=>'Ride updated successfully']);
@@ -232,6 +249,7 @@ if ($method === 'GET') {
         $price = $input['price'] ?? 0;
         $vehicle = $input['vehicle'] ?? '';
         $details = $input['details'] ?? '';
+        $stops = $input['stops'] ?? '';
         
         // New fields for Long Trip
         $end_date = $input['end_date'] ?? NULL;
@@ -242,8 +260,8 @@ if ($method === 'GET') {
             exit;
         }
 
-        $stmt = $conn->prepare("INSERT INTO rides (driver_id, from_location, to_location, ride_date, ride_time, end_date, ride_type, seats_available, price_per_seat, total_cost, vehicle_type, details) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("issssssidsss", $driver_id, $from, $to, $date, $time, $end_date, $type, $seats, $price, $total_cost, $vehicle, $details);
+        $stmt = $conn->prepare("INSERT INTO rides (driver_id, from_location, to_location, ride_date, ride_time, end_date, ride_type, seats_available, price_per_seat, total_cost, vehicle_type, details, intermediate_stops) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("issssssidssss", $driver_id, $from, $to, $date, $time, $end_date, $type, $seats, $price, $total_cost, $vehicle, $details, $stops);
 
         if ($stmt->execute()) {
             echo JSON_encode(['success' => true, 'message' => ucfirst($type) . ' trip published successfully', 'ride_id' => $stmt->insert_id]);

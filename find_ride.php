@@ -114,6 +114,27 @@ if (!isset($_SESSION['user_id'])) {
                         </div>
                     </div>
 
+                    <!-- Custom Route Section -->
+                    <div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #dbeafe;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 0.95rem; color: #1e40af;">Customize Your Trip (Optional)</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div class="form-group" style="margin:0;">
+                                <label style="font-size: 0.8rem;">My Pickup</label>
+                                <input type="text" id="mCustomPickup" class="form-input" style="font-size: 0.9rem; padding: 6px;" oninput="recalcPrice()">
+                            </div>
+                            <div class="form-group" style="margin:0;">
+                                <label style="font-size: 0.8rem;">My Dropoff</label>
+                                <input type="text" id="mCustomDrop" class="form-input" style="font-size: 0.9rem; padding: 6px;" oninput="recalcPrice()">
+                            </div>
+                        </div>
+                        <div id="priceAdjustmentMsg" style="margin-top: 8px; font-size: 0.85rem; color: #059669; font-weight: 600; display: none;">
+                            <i class="fas fa-tag"></i> Price updated for partial route!
+                        </div>
+                        <div id="finalPriceDisplay" style="margin-top: 5px; font-size: 1.1rem; font-weight: 800; color: #1e40af; text-align: right;">
+                            Total: ₹<span id="txtFinalPrice">0</span>
+                        </div>
+                    </div>
+
                     <div style="background: #f9fafb; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem;">
                         <div style="width: 40px; height: 40px; background: #e5e7eb; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
                             <i class="fas fa-user" style="color: #9ca3af;"></i>
@@ -135,6 +156,24 @@ if (!isset($_SESSION['user_id'])) {
                         </select>
                     </div>
 
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label>Govt. Approved ID Type</label>
+                        <select id="mIdType" class="form-input">
+                            <option value="Aadhar Card" selected>Aadhar Card</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label>ID Number</label>
+                        <input type="text" id="mIdNumber" class="form-input" placeholder="e.g. ABCD1234E">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label>Upload ID Document (Image/PDF)</label>
+                        <input type="file" id="mProof" class="form-input" accept="image/*,.pdf" style="padding: 0.5rem;">
+                        <small style="color: var(--text-gray); font-size: 0.8rem;">Please upload a clear picture of the selected Government ID.</small>
+                    </div>
+
                     <div id="modalMsg"></div>
 
                     <div style="display: flex; gap: 1rem;">
@@ -146,11 +185,236 @@ if (!isset($_SESSION['user_id'])) {
         </div>
     </div>
 
+    <script src="https://unpkg.com/tesseract.js@v4.0.2/dist/tesseract.min.js"></script>
     <script src="js/ride_manager.js"></script>
     <script>
+        // Tesseract Worker (Global)
+        // Note: Initializing worker may take a moment.
+        
+        const currentUserName = "<?php echo isset($_SESSION['username']) ? addslashes($_SESSION['username']) : ''; ?>";
+
         function toggleMobileMenu() {
             document.getElementById('navLinks').classList.toggle('show');
         }
+        
+        // ... (Existing init code) ...
+
+        async function verifyDocumentContent(file, idType, typedIdNumber = '') {
+             // Strict Keywords for Aadhar
+             const uniqueAadharKeys = ['uidai', 'unique identification', 'aadhaar', 'adhar', 'mera', 'pehchan', 'father', 'dob', 'yob'];
+             
+             // Negative Keywords (If found, immediately REJECT)
+             const negativeKeys = ['driving licence', 'driving license', 'income tax', 'pan card', 'election', 'voter', 'passport', 'republic of india'];
+
+             // Helper: Load Image
+             const loadImage = (src) => new Promise((resolve, reject) => {
+                 const img = new Image();
+                 img.onload = () => resolve(img);
+                 img.onerror = reject;
+                 img.src = src;
+             });
+
+             // Helper: Preprocess Image (Upscale if too small for OCR)
+             const preprocessImage = (img) => {
+                 const MIN_WIDTH = 1000;
+                 let width = img.width;
+                 let height = img.height;
+                 
+                 if (width < MIN_WIDTH) {
+                     const scale = MIN_WIDTH / width;
+                     width = MIN_WIDTH;
+                     height = img.height * scale;
+                 }
+
+                 const canvas = document.createElement('canvas');
+                 canvas.width = width;
+                 canvas.height = height;
+                 const ctx = canvas.getContext('2d');
+                 ctx.drawImage(img, 0, 0, width, height);
+                 return canvas;
+             };
+
+             // Helper: Get Rotated Data URL
+             const getRotatedImage = (sourceCanvas, angle) => {
+                 const canvas = document.createElement('canvas');
+                 const ctx = canvas.getContext('2d');
+                 
+                 if (angle === 90 || angle === 270) {
+                     canvas.width = sourceCanvas.height;
+                     canvas.height = sourceCanvas.width;
+                 } else {
+                     canvas.width = sourceCanvas.width;
+                     canvas.height = sourceCanvas.height;
+                 }
+                 
+                 ctx.translate(canvas.width / 2, canvas.height / 2);
+                 ctx.rotate(angle * Math.PI / 180);
+                 ctx.drawImage(sourceCanvas, -sourceCanvas.width / 2, -sourceCanvas.height / 2);
+                 return canvas.toDataURL('image/jpeg');
+             };
+
+             // Helper: Scan Text
+             const scan = async (imageSource) => {
+                 const { data: { text } } = await Tesseract.recognize(imageSource, 'eng', { logger: m => {} });
+                 console.log("OCR Output:", text); 
+                 return text.toLowerCase();
+             };
+
+             // Helper: Validate Text
+             const validate = (text) => {
+                 // 1. Check for Negative Keywords
+                 const isInvalidType = negativeKeys.some(k => text.includes(k));
+                 if (isInvalidType) return { valid: false, reason: "Incorrect ID Type detected. Please upload an Aadhar Card." };
+
+                // 2. ID NUMBER MATCH (Fuzzy Logic)
+                 if (typedIdNumber) {
+                     // Normalize User Input
+                     const targetDigits = typedIdNumber.replace(/\D/g, ''); 
+                     
+                     if (targetDigits.length >= 8) { // Only run if we have a reasonable ID length
+                         
+                         // Fix Common OCR Subs in the RAW TEXT first
+                         // O->0, l/I->1, S->5, etc.
+                         let fixedText = text.replace(/o|O/g, '0')
+                                             .replace(/l|i|I/g, '1')
+                                             .replace(/s|S/g, '5')
+                                             .replace(/z|Z/g, '2')
+                                             .replace(/b|B/g, '8');
+
+                         const docDigits = fixedText.replace(/\D/g, ''); // Extract all digits from doc
+                         
+                         // Strategy: Chunk Matching
+                         // Break ID into 3 blocks of 4 digits: "1234", "5678", "9012"
+                         // If we find at least 2 of these blocks, we assume it's the correct card.
+                         
+                         const chunks = targetDigits.match(/.{1,4}/g) || [];
+                         let foundChunks = 0;
+                         const chunkDetails = [];
+
+                         chunks.forEach(chunk => {
+                             if (chunk.length < 3) return; // Skip tiny chunks
+                             
+                             // Search for this specific chunk in the doc text
+                             // We allow 1 digit error per chunk
+                             let bestDiff = 4;
+                             
+                             // Sliding window for this chunk
+                             for (let i = 0; i <= docDigits.length - chunk.length; i++) {
+                                 let diffs = 0;
+                                 for (let j = 0; j < chunk.length; j++) {
+                                     if (docDigits[i + j] !== chunk[j]) diffs++;
+                                 }
+                                 if (diffs < bestDiff) bestDiff = diffs;
+                             }
+
+                             if (bestDiff <= 1) {
+                                 foundChunks++;
+                                 chunkDetails.push(`[${chunk}: Found]`);
+                             } else {
+                                 chunkDetails.push(`[${chunk}: LOW MATCH]`);
+                             }
+                         });
+
+                         // Success Condition: 2 out of 3 chunks found OR High partial match on full string
+                         const isChunkSuccess = (foundChunks >= 2 && chunks.length === 3) || (foundChunks >= 1 && chunks.length < 3);
+                         
+                         if (isChunkSuccess) {
+                             // SUCCESS
+                         } else {
+                             // Fallback: Try the original full-string sliding window allows up to 5 errors
+                             let fullDiff = 999;
+                             for (let i = 0; i <= docDigits.length - targetDigits.length; i++) {
+                                 let diffs = 0;
+                                 for (let j = 0; j < targetDigits.length; j++) {
+                                     if (docDigits[i + j] !== targetDigits[j]) diffs++;
+                                 }
+                                 if (diffs < fullDiff) fullDiff = diffs;
+                             }
+                             
+                             if (fullDiff > 5) {
+                                 return { 
+                                     valid: false, 
+                                     reason: `ID Number mismatch! Found ${foundChunks}/3 parts. OCR saw numbers like: ${docDigits.substring(0, 20)}...` 
+                                 };
+                             }
+                         }
+                     }
+                 }
+
+                 // 3. Name Verification (Secondary Priority now)
+                 let nameMatches = false;
+                 if (currentUserName) {
+                      const userParts = currentUserName.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(p => p.length >= 2);
+                      if (userParts.length > 0) {
+                          const matchCount = userParts.filter(part => text.includes(part)).length;
+                          if (matchCount === userParts.length) nameMatches = true;
+                      } else {
+                          nameMatches = true; 
+                      }
+                 } else {
+                     nameMatches = true;
+                 }
+                 
+                 if (!nameMatches) {
+                      return { valid: false, reason: `Name mismatch! Account name '${currentUserName}' was not found in the uploaded ID.` };
+                 }
+
+                 return { valid: true };
+             }
+
+             // Main Logic
+             try {
+                 const imageUrl = URL.createObjectURL(file);
+                 const img = await loadImage(imageUrl);
+                 
+                 // 0. Preprocess
+                 const processedCanvas = preprocessImage(img);
+                 const processedDataUrl = processedCanvas.toDataURL('image/jpeg');
+
+                 // 1. Try Original
+                 console.log("Scanning original...");
+                 let text = await scan(processedDataUrl);
+                 let result = validate(text);
+                 if(result.valid) return result;
+                 // Fail fast on mismatches
+                 if(result.reason && (result.reason.includes("Incorrect ID") || result.reason.includes("ID Number mismatch"))) return result;
+
+                 // 2. Try 90 Degrees
+                 console.log("Scanning 90 deg...");
+                 let rotatedUrl = getRotatedImage(processedCanvas, 90);
+                 text = await scan(rotatedUrl);
+                 result = validate(text);
+                 if(result.valid) return result;
+                 if(result.reason && (result.reason.includes("Incorrect ID") || result.reason.includes("ID Number mismatch"))) return result;
+
+                 // 3. Try -90 Degrees
+                 console.log("Scanning -90 deg...");
+                 rotatedUrl = getRotatedImage(processedCanvas, -90);
+                 text = await scan(rotatedUrl);
+                 result = validate(text);
+                 if(result.valid) return result;
+
+                 return { valid: false, reason: "Verification Failed: " + (result.reason || "Please check the image.") };
+                 
+             } catch(e) {
+                 console.error(e);
+                 return { valid: false, reason: "Error processing image. try a different file." };
+             }
+        }
+
+        // Auto-Format ID Number Input (Add spaces every 4 digits)
+        const idInput = document.getElementById('mIdNumber');
+        if (idInput) {
+            idInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+                if (value.length > 12) value = value.substring(0, 12); // Limit to 12 digits
+                
+                // Add spaces: 1234 5678 1234
+                let formatted = value.replace(/(\d{4})(?=\d)/g, '$1 ');
+                e.target.value = formatted;
+            });
+        }
+
 
         // Initial Load
         window.addEventListener('load', () => {
@@ -338,9 +602,50 @@ if (!isset($_SESSION['user_id'])) {
             container.innerHTML = html;
         }
 
-        // Modal Variables
-        let currentRideId = null;
-        let currentRide = null;
+        let calculatedPrice = 0;
+
+        function recalcPrice() {
+            if (!currentRide) return;
+            
+            const seats = parseInt(document.getElementById('mSeats').value) || 1;
+            const basePrice = parseFloat(currentRide.price_per_seat);
+            
+            const origFrom = currentRide.from_location.trim().toLowerCase();
+            const origTo = currentRide.to_location.trim().toLowerCase();
+            
+            const myFrom = document.getElementById('mCustomPickup').value.trim().toLowerCase();
+            const myTo = document.getElementById('mCustomDrop').value.trim().toLowerCase();
+            
+            let factor = 1.0;
+            
+            // Logic: Assume strings match roughly if one contains the other or identical
+            // Or simpler: Exact match check for logic simplicity.
+            
+            const isDiffFrom = (myFrom && myFrom !== origFrom);
+            const isDiffTo = (myTo && myTo !== origTo);
+            
+            if (isDiffFrom && isDiffTo) {
+                factor = 0.8; // Both different (Middle segment)
+            } else if (isDiffFrom || isDiffTo) {
+                factor = 0.9; // One different (Start/End segment)
+            }
+            
+            const unitPrice = basePrice * factor;
+            calculatedPrice = unitPrice * seats;
+            
+            document.getElementById('txtFinalPrice').innerText = calculatedPrice.toFixed(0);
+            
+            const msg = document.getElementById('priceAdjustmentMsg');
+            if (factor < 1.0) {
+                msg.style.display = 'block';
+                msg.innerText = `Partial route discount applied (${Math.round((1-factor)*100)}% off)`;
+            } else {
+                msg.style.display = 'none';
+            }
+        }
+        
+        // Listen to Seats change too
+        document.getElementById('mSeats').addEventListener('change', recalcPrice);
 
         async function requestRide(rideId) {
             currentRideId = rideId;
@@ -353,14 +658,12 @@ if (!isset($_SESSION['user_id'])) {
             content.style.display = 'none';
 
             try {
-                // Fetch Ride Details
                 const response = await fetch(`api_rides.php?ride_id=${rideId}`);
                 const data = await response.json();
 
                 if (data.success && data.ride) {
                     currentRide = data.ride;
                     
-                    // Populate Modal
                     document.getElementById('mFrom').textContent = currentRide.from_location;
                     document.getElementById('mTo').textContent = currentRide.to_location;
                     document.getElementById('mTime').textContent = `${currentRide.ride_date} at ${currentRide.ride_time}`;
@@ -368,11 +671,15 @@ if (!isset($_SESSION['user_id'])) {
                     document.getElementById('mDriver').textContent = currentRide.driver_name;
                     document.getElementById('mVehicle').textContent = currentRide.vehicle_type;
 
+                    // Set defaults for custom fields
+                    document.getElementById('mCustomPickup').value = currentRide.from_location;
+                    document.getElementById('mCustomDrop').value = currentRide.to_location;
+                    
+                    // Init Price
+                    recalcPrice();
+
                     loading.style.display = 'none';
                     content.style.display = 'block';
-
-                    // Note: Backend api_rides.php already excludes our own rides from search, 
-                    // so we shouldn't land here for our own rides typically.
                 } else {
                     alert('Error loading ride details.');
                     closeRequestModal();
@@ -383,7 +690,7 @@ if (!isset($_SESSION['user_id'])) {
                 closeRequestModal();
             }
         }
-
+        
         function closeRequestModal() {
             document.getElementById('requestModal').style.display = 'none';
             document.getElementById('modalMsg').innerHTML = ''; // Clear messages
@@ -401,21 +708,105 @@ if (!isset($_SESSION['user_id'])) {
         async function submitRequest() {
             if (!currentRideId) return;
 
-            const seats = document.getElementById('mSeats').value;
+            // Inputs
+            const seatsInput = document.getElementById('mSeats');
+            const proofInput = document.getElementById('mProof');
+            const idTypeInput = document.getElementById('mIdType');
+            const idNumberInput = document.getElementById('mIdNumber');
+            
+            const pickupInput = document.getElementById('mCustomPickup');
+            const dropInput = document.getElementById('mCustomDrop');
+            
             const btn = document.getElementById('btnConfirm');
             const msgBox = document.getElementById('modalMsg');
 
+            // Reset Styles & Messages
+            const inputs = [seatsInput, proofInput, idTypeInput, idNumberInput, pickupInput, dropInput];
+            inputs.forEach(el => el.style.borderColor = '#ddd');
+            msgBox.innerHTML = '';
+            
+            let isValid = true;
+            let firstError = null;
+            const setError = (el, msg) => {
+                el.style.borderColor = 'var(--error-red)';
+                if (!firstError) firstError = msg;
+                isValid = false;
+            };
+
+            // 1. Custom Location Validation
+            if (!pickupInput.value.trim()) setError(pickupInput, "Pickup location cannot be empty.");
+            if (!dropInput.value.trim()) setError(dropInput, "Dropoff location cannot be empty.");
+
+            // 2. ID Details Validation
+            const idType = idTypeInput.value;
+            // Clean spaces for validation
+            const idNumberRaw = idNumberInput.value.trim(); 
+            const idNumberClean = idNumberRaw.replace(/\s+/g, '');
+
+            if (!idNumberClean) {
+                setError(idNumberInput, "Please enter your ID Number.");
+            } else {
+                // Regex Patterns
+                const patterns = {
+                    'Aadhar Card': /^\d{12}$/
+                };
+                if (patterns[idType] && !patterns[idType].test(idNumberClean)) {
+                    setError(idNumberInput, "Invalid Aadhar Format (Must be 12 digits)");
+                }
+            }
+
+            // 3. File Validation
+            if (proofInput.files.length === 0) {
+                 setError(proofInput, "Please upload the ID Proof document.");
+            } else {
+                const file = proofInput.files[0];
+                const validTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+                if (!validTypes.includes(file.type)) {
+                    setError(proofInput, "Only JPG, PNG, or PDF files are allowed.");
+                } else if (file.size > 5 * 1024 * 1024) {
+                    setError(proofInput, "File is too large. Max 5MB allowed.");
+                }
+            }
+
+            if (!isValid) {
+                msgBox.innerHTML = `<div class="error-banner" style="margin-bottom:1rem; padding: 1rem; background: #fee2e2; color: #991b1b; border-radius: 8px;"><i class="fas fa-exclamation-circle"></i> ${firstError}</div>`;
+                return;
+            }
+            
+            // Proceed with OCR
             btn.disabled = true;
-            btn.innerHTML = 'Sending...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
 
             try {
+                // Perform OCR Check (Pass RAW input with spaces, verify function handles it)
+                const ocrResult = await verifyDocumentContent(proofInput.files[0], idType, idNumberClean);
+                
+                if (!ocrResult.valid) {
+                    msgBox.innerHTML = `<div class="error-banner" style="margin-bottom:1rem; padding: 1rem; background: #fee2e2; color: #991b1b; border-radius: 8px;"><b>Verification Failed:</b> ${ocrResult.reason}</div>`;
+                    btn.disabled = false;
+                    btn.innerHTML = 'Confirm Request';
+                    return;
+                }
+                
+                btn.innerHTML = 'Sending...';
+
+                const formData = new FormData();
+                formData.append('action', 'create');
+                formData.append('ride_id', currentRideId);
+                formData.append('seats_requested', seatsInput.value);
+                formData.append('id_type', idType);
+                formData.append('id_number', idNumberClean); // Send CLEAN number to server
+                formData.append('pickup_loc', pickupInput.value.trim());
+                formData.append('drop_loc', dropInput.value.trim());
+                formData.append('final_price', calculatedPrice.toFixed(2));
+                
+                if (proofInput.files.length > 0) {
+                    formData.append('proof_image', proofInput.files[0]);
+                }
+
                 const response = await fetch('api_requests.php', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ride_id: currentRideId,
-                        seats_requested: seats
-                    })
+                    body: formData
                 });
                 const result = await response.json();
 
@@ -431,7 +822,7 @@ if (!isset($_SESSION['user_id'])) {
                 }
             } catch (error) {
                 console.error(error);
-                msgBox.innerHTML = `<div class="error-banner">Server Error</div>`;
+                msgBox.innerHTML = `<div class="error-banner" style="margin-bottom:1rem; padding: 1rem; background: #fee2e2; color: #991b1b; border-radius: 8px;">Server Error. Please try again.</div>`;
                 btn.disabled = false;
                 btn.innerHTML = 'Confirm Request';
             }
