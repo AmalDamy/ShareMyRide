@@ -15,6 +15,7 @@ if (!isset($_SESSION['user_id'])) {
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
     
     <style>
         body {
@@ -186,6 +187,7 @@ if (!isset($_SESSION['user_id'])) {
 
     <!-- Scripts -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const rideId = urlParams.get('id');
@@ -220,29 +222,43 @@ if (!isset($_SESSION['user_id'])) {
             'eranakulam': [9.9816, 76.2999], 
             'ernakulam': [9.9816, 76.2999],
             
-            // New Additions
+            // Local Area Fixes
             'ponkunnam': [9.5667, 76.7667],
             'ponnkunnam': [9.5667, 76.7667],
-            'koovapally': [9.5500, 76.8167], 
-            'kanjirapally': [9.5556, 76.7861],
-            'pala': [9.7112, 76.6806]
+            'koovapally': [9.5400, 76.8000], 
+            'koovappally': [9.5400, 76.8000],
+            'kanjirapally': [9.5546, 76.7865],
+            'kanjirappally': [9.5546, 76.7865],
+            'mundakkayam': [9.5826, 76.8841],
+            'mundakayam': [9.5826, 76.8841],
+            'pala': [9.7112, 76.6806],
+            '26 mile': [9.5480, 76.8050],
+            '26th mile': [9.5480, 76.8050],
+            'amal jyothi': [9.5293, 76.8221],
+            'ajce': [9.5293, 76.8221]
         };
 
-        async function getCoords(city) {
-             if(!city) return [10.0, 76.3]; // Default fallback
-             
-             const key = city.toLowerCase().trim();
-             
-             // 1. Try Local Dictionary
-             if(cities[key]) return cities[key];
-             const splitKey = key.split(' ')[0];
-             if(cities[splitKey]) return cities[splitKey];
+        const FALLBACK_COORDS = [9.5293, 76.8221]; // Amal Jyothi Campus
 
-             // 2. Try Nominatim API (OpenStreetMap)
+        async function getCoords(city) {
+             if(!city) return FALLBACK_COORDS; 
+             
+             // Normalize: lowercase, trim, and remove trailing commas/dots
+             let cleanName = city.toLowerCase().replace(/[.,]$/, '').trim();
+             
+             // 1. Exact Match in Dictionary
+             if(cities[cleanName]) return cities[cleanName];
+             
+             // 2. Contains Match (Handle "Mundakkayam, Kerala")
+             const foundKey = Object.keys(cities).find(k => cleanName.includes(k) || k.includes(cleanName));
+             if(foundKey) return cities[foundKey];
+
+             // 3. Amal Jyothi Alias logic
+             if(cleanName.includes('amal jyothi') || cleanName.includes('ajce')) return cities['amal jyothi'];
+
+             // 4. Try Nominatim API (OpenStreetMap)
              try {
-                 console.log(`Fetching coords for: ${city}`);
-                 // Add user-agent header as per Nominatim usage policy (best practice, browser sends one but good to be explicit/standard)
-                 const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`);
+                 const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city + ", Kerala")}`);
                  const data = await response.json();
                  if(data && data.length > 0) {
                      return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
@@ -251,10 +267,8 @@ if (!isset($_SESSION['user_id'])) {
                  console.warn("Geocoding failed for", city, e);
              }
 
-             // 3. Fallback with Jitter
-             // If we fail, return standard fallback but add tiny random jitter 
-             // so if start & end both fail, they aren't the EXACT same point (which prevents line drawing)
-             return [10.0 + (Math.random() * 0.01), 76.3 + (Math.random() * 0.01)]; 
+             // 5. Final Fallback
+             return [FALLBACK_COORDS[0] + (Math.random() * 0.01), FALLBACK_COORDS[1] + (Math.random() * 0.01)]; 
         }
 
         // Fetch Data
@@ -292,54 +306,68 @@ if (!isset($_SESSION['user_id'])) {
             }
 
             // Map Logic
-            const start = await getCoords(ride.from_location);
-            const end = await getCoords(ride.to_location);
+            const startCoords = await getCoords(ride.from_location);
+            const endCoords = await getCoords(ride.to_location);
 
-            const carMarker = L.marker(start, {icon: carIcon}).addTo(map);
-            L.marker(end).addTo(map).bindPopup("Destination");
+            // Add Markers
+            L.marker(startCoords).addTo(map).bindPopup(`<b>Pickup:</b> ${ride.from_location}`);
+            L.marker(endCoords).addTo(map).bindPopup(`<b>Dropoff:</b> ${ride.to_location}`);
             
-            const route = L.polyline([start, end], { color: '#009688', weight: 5, dashArray: '10,10' }).addTo(map);
-            map.fitBounds(route.getBounds(), {padding: [50, 50]});
+            const carMarker = L.marker(startCoords, {icon: carIcon, zIndexOffset: 1000}).addTo(map);
 
-            // Simulate Movement (Restart on Refresh)
-            let progress = 0;
-            const speed = 0.002;
-            
-            function updateCar(p) {
-                const lat = start[0] + (end[0] - start[0]) * p;
-                const lng = start[1] + (end[1] - start[1]) * p;
-                carMarker.setLatLng([lat, lng]);
+            // 1. Draw Actual Road Route
+            const routingControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(startCoords[0], startCoords[1]),
+                    L.latLng(endCoords[0], endCoords[1])
+                ],
+                routeWhileDragging: false,
+                addWaypoints: false,
+                draggableWaypoints: false,
+                fitSelectedRoutes: true,
+                show: false,
+                lineOptions: {
+                    styles: [{color: '#0d9488', opacity: 0.6, weight: 6}]
+                },
+                createMarker: function() { return null; } // Don't add markers via routing machine
+            }).addTo(map);
+
+            routingControl.on('routesfound', function(e) {
+                const routes = e.routes;
+                const pathCoords = routes[0].coordinates;
                 
-                // Update ETA
-                const mins = Math.max(0, Math.round(30 * (1 - p)));
-                document.getElementById('eta').innerText = mins + ' min';
-            }
-            
-            function setArrived() {
-                 document.getElementById('rideStatus').innerText = "Arrived";
-                 document.getElementById('rideStatus').className = "status-badge status-active"; 
-                 document.getElementById('rideStatus').style.animation = "none";
-                 document.getElementById('eta').innerText = "Arrived";
-                 updateCar(1);
-            }
+                // Simulate Movement along the coordinates
+                let index = 0;
+                const interval = setInterval(() => {
+                    index += 1;
+                    if (index >= pathCoords.length) {
+                        index = pathCoords.length - 1;
+                        document.getElementById('rideStatus').innerText = "Arrived";
+                        document.getElementById('rideStatus').className = "status-badge status-active"; 
+                        document.getElementById('rideStatus').style.animation = "none";
+                        document.getElementById('eta').innerText = "Arrived";
+                        clearInterval(interval);
+                    }
+                    
+                    const pos = pathCoords[index];
+                    carMarker.setLatLng(pos);
+                    
+                    // Update ETA
+                    const progress = index / pathCoords.length;
+                    const mins = Math.max(0, Math.round(30 * (1 - progress)));
+                    document.getElementById('eta').innerText = mins + ' min';
+                    
+                    // Occasionally Re-center
+                    if(index % 20 === 0) map.panTo(pos);
+                }, 100);
+            });
 
-            // Start Animation
-            const interval = setInterval(() => {
-                progress += speed;
-
-                if (progress >= 1) {
-                    progress = 1;
-                    setArrived();
-                    clearInterval(interval); // Stop animation at end
-                } else {
-                    updateCar(progress);
-                    // Occasional Re-center
-                    if(Math.random() > 0.98) map.panTo(carMarker.getLatLng());
-                }
-            }, 100);
-            
-            // Initial positioning
-            updateCar(progress);
+            // Handle Error (Fallback to straight line if routing service is down)
+            routingControl.on('routingerror', function() {
+                console.warn("Routing failed, falling back to straight line.");
+                const route = L.polyline([startCoords, endCoords], { color: '#0d9488', weight: 5, dashArray: '10,10' }).addTo(map);
+                map.fitBounds(route.getBounds(), {padding: [50, 50]});
+            });
         }
     </script>
 </body>

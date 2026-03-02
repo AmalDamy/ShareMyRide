@@ -610,19 +610,22 @@ $co2Saved = $ridesTaken * 2.5;
                     let html = '';
                     data.requests.forEach(req => {
                         let proofDisplay = '';
-                        // Always show ID info if available
-                        let idInfo = '';
-                        if (req.id_type) {
-                            idInfo = `<div style="margin-bottom: 5px; font-size: 0.85rem; color: #4b5563;">
-                                        <strong>${req.id_type}</strong>: ${req.id_number || 'N/A'}
-                                      </div>`;
-                        }
-
                         if (req.proof_image) {
                             proofDisplay = `
                             <button onclick="openImageModal('${req.proof_image}')" class="btn btn-outline" style="padding: 0.4rem 1rem; font-size: 0.8rem; height: auto; display: inline-flex; align-items: center; border-color: #94a3b8; color: #475569; margin-right: 0.5rem;">
                                 <i class="fas fa-file-invoice" style="margin-right:0.3rem;"></i> View Proof
                             </button>`;
+                        }
+
+                        const rating = req.rating ? parseFloat(req.rating).toFixed(1) : 'New';
+                        const ratingColor = (rating !== 'New' && rating >= 4.0) ? '#eab308' : '#6b7280';
+                        
+                        let profileImgHtml = `<div style="width: 40px; height: 40px; background: #e0e7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #4f46e5; margin-right: 0.75rem;">
+                                                ${req.passenger_name.charAt(0).toUpperCase()}
+                                              </div>`;
+                                              
+                        if (req.profile_pic) {
+                             profileImgHtml = `<img src="${req.profile_pic}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 0.75rem;">`;
                         }
 
                         // Actions vs Status
@@ -650,16 +653,25 @@ $co2Saved = $ridesTaken * 2.5;
                        
                          html += `
                         <div class="trip-card" style="margin-bottom: 1rem; background: #fff; border: 1px solid #e0e7ff; padding: 1rem; border-radius: 8px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+                            <div style="display: flex; align-items: center; margin-bottom: 0.75rem;">
+                                ${profileImgHtml}
                                 <div>
-                                    <span style="font-weight: 700; color:var(--text-dark);"><i class="fas fa-user"></i> ${req.passenger_name}</span>
-                                    <span style="color: var(--text-gray); font-size: 0.9rem; margin-left: 10px;">requested ${req.seats_requested} seat(s)</span>
+                                    <div style="font-weight: 700; color:var(--text-dark); display: flex; align-items: center; gap: 0.5rem;">
+                                        ${req.passenger_name}
+                                        <span class="trip-badge" style="background: #f3f4f6; color: ${ratingColor}; font-size: 0.75rem; padding: 2px 6px;">
+                                            <i class="fas fa-star" style="font-size: 0.7rem;"></i> ${rating}
+                                        </span>
+                                    </div>
+                                    <div style="color: var(--text-gray); font-size: 0.85rem;">
+                                        Wants <strong>${req.seats_requested}</strong> seat(s) for this trip
+                                    </div>
                                 </div>
-                                <div style="font-size:0.85rem; color:var(--text-gray);">${req.from_location} → ${req.to_location}</div>
                             </div>
                             
-                            ${idInfo}
-
+                            <div style="background: #f8fafc; padding: 0.5rem; border-radius: 6px; font-size: 0.85rem; color: var(--text-gray); margin-bottom: 0.75rem;">
+                                <i class="fas fa-route" style="color: var(--primary-teal);"></i> Trip: <strong>${req.from_location}</strong> to <strong>${req.to_location}</strong>
+                            </div>
+                            
                             ${actionArea}
                         </div>`;
                     });

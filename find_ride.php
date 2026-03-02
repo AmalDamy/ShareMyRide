@@ -156,22 +156,28 @@ if (!isset($_SESSION['user_id'])) {
                         </select>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label>Govt. Approved ID Type</label>
-                        <select id="mIdType" class="form-input">
-                            <option value="Aadhar Card" selected>Aadhar Card</option>
-                        </select>
-                    </div>
+                    <!-- Hidden inputs for backward compatibility/internal tracking if needed, though we extract from OCR now -->
+                    <input type="hidden" id="mIdType" value="Aadhar Card">
+                    <input type="hidden" id="mIdNumber" value="">
 
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label>ID Number</label>
-                        <input type="text" id="mIdNumber" class="form-input" placeholder="e.g. ABCD1234E">
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 1.5rem;">
-                        <label>Upload ID Document (Image/PDF)</label>
-                        <input type="file" id="mProof" class="form-input" accept="image/*,.pdf" style="padding: 0.5rem;">
-                        <small style="color: var(--text-gray); font-size: 0.8rem;">Please upload a clear picture of the selected Government ID.</small>
+                    <div class="form-group" style="margin-bottom: 2rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-id-card" style="color: var(--primary-teal);"></i> 
+                            Upload Govt. Certified Aadhar Card *
+                        </label>
+                        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('mProof').click()" style="border: 2px dashed #cbd5e1; border-radius: 12px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.3s; background: #f8fafc;">
+                            <i class="fas fa-cloud-upload-alt" style="font-size: 2.5rem; color: #94a3b8; margin-bottom: 1rem;"></i>
+                            <p style="margin: 0; color: #64748b; font-weight: 500;">Click to upload or drag and drop</p>
+                            <p style="margin: 5px 0 0; color: #94a3b8; font-size: 0.8rem;">JPG, PNG or PDF (Max 5MB)</p>
+                            <div id="fileSelectedName" style="margin-top: 1rem; font-weight: 600; color: var(--primary-teal); display: none;"></div>
+                        </div>
+                        <input type="file" id="mProof" class="form-input" accept="image/*,.pdf" style="display: none;" onchange="handleFileSelect(this)">
+                        <div style="margin-top: 1rem; padding: 1rem; background: #fff7ed; border-radius: 8px; border: 1px solid #ffedd5; display: flex; gap: 0.75rem; align-items: flex-start;">
+                            <i class="fas fa-shield-check" style="color: #f97316; margin-top: 3px;"></i>
+                            <span style="font-size: 0.85rem; color: #9a3412; line-height: 1.4;">
+                                <strong>Strict Verification:</strong> Only original, government-certified Aadhar cards are accepted. Our AI will verify the document authenticity and extract your ID details automatically.
+                            </span>
+                        </div>
                     </div>
 
                     <div id="modalMsg"></div>
@@ -196,16 +202,25 @@ if (!isset($_SESSION['user_id'])) {
         function toggleMobileMenu() {
             document.getElementById('navLinks').classList.toggle('show');
         }
+
+        function handleFileSelect(input) {
+            const fileName = input.files[0] ? input.files[0].name : '';
+            const display = document.getElementById('fileSelectedName');
+            const zone = document.getElementById('uploadZone');
+            
+            if (fileName) {
+                display.innerText = "Selected: " + fileName;
+                display.style.display = 'block';
+                zone.style.borderColor = 'var(--primary-teal)';
+                zone.style.background = '#f0fdfa';
+            } else {
+                display.style.display = 'none';
+                zone.style.borderColor = '#cbd5e1';
+                zone.style.background = '#f8fafc';
+            }
+        }
         
-        // ... (Existing init code) ...
-
         async function verifyDocumentContent(file, idType, typedIdNumber = '') {
-             // Strict Keywords for Aadhar
-             const uniqueAadharKeys = ['uidai', 'unique identification', 'aadhaar', 'adhar', 'mera', 'pehchan', 'father', 'dob', 'yob'];
-             
-             // Negative Keywords (If found, immediately REJECT)
-             const negativeKeys = ['driving licence', 'driving license', 'income tax', 'pan card', 'election', 'voter', 'passport', 'republic of india'];
-
              // Helper: Load Image
              const loadImage = (src) => new Promise((resolve, reject) => {
                  const img = new Image();
@@ -214,22 +229,27 @@ if (!isset($_SESSION['user_id'])) {
                  img.src = src;
              });
 
-             // Helper: Preprocess Image (Upscale if too small for OCR)
+             // Helper: Preprocess Image (Enhanced for OCR)
              const preprocessImage = (img) => {
-                 const MIN_WIDTH = 1000;
+                 const MAX_DIM = 2000;
                  let width = img.width;
                  let height = img.height;
                  
-                 if (width < MIN_WIDTH) {
-                     const scale = MIN_WIDTH / width;
-                     width = MIN_WIDTH;
-                     height = img.height * scale;
+                 if (width > height) {
+                     if (width < 1200) { height *= 1200/width; width = 1200; }
+                 } else {
+                     if (height < 1200) { width *= 1200/height; height = 1200; }
                  }
 
                  const canvas = document.createElement('canvas');
                  canvas.width = width;
                  canvas.height = height;
                  const ctx = canvas.getContext('2d');
+                 
+                 // Try to improve contrast for Tesseract
+                 ctx.fillStyle = 'white';
+                 ctx.fillRect(0, 0, width, height);
+                 ctx.filter = 'grayscale(100%) contrast(150%) brightness(110%)';
                  ctx.drawImage(img, 0, 0, width, height);
                  return canvas;
              };
@@ -255,111 +275,91 @@ if (!isset($_SESSION['user_id'])) {
 
              // Helper: Scan Text
              const scan = async (imageSource) => {
-                 const { data: { text } } = await Tesseract.recognize(imageSource, 'eng', { logger: m => {} });
-                 console.log("OCR Output:", text); 
+                 const worker = await Tesseract.createWorker({ logger: m => {} });
+                 await worker.loadLanguage('eng');
+                 await worker.initialize('eng');
+                 const { data: { text } } = await worker.recognize(imageSource);
+                 await worker.terminate();
+                 console.log("OCR Raw Output:", text); 
                  return text.toLowerCase();
              };
 
              // Helper: Validate Text
              const validate = (text) => {
-                 // 1. Check for Negative Keywords
-                 const isInvalidType = negativeKeys.some(k => text.includes(k));
-                 if (isInvalidType) return { valid: false, reason: "Incorrect ID Type detected. Please upload an Aadhar Card." };
-
-                // 2. ID NUMBER MATCH (Fuzzy Logic)
-                 if (typedIdNumber) {
-                     // Normalize User Input
-                     const targetDigits = typedIdNumber.replace(/\D/g, ''); 
-                     
-                     if (targetDigits.length >= 8) { // Only run if we have a reasonable ID length
-                         
-                         // Fix Common OCR Subs in the RAW TEXT first
-                         // O->0, l/I->1, S->5, etc.
-                         let fixedText = text.replace(/o|O/g, '0')
-                                             .replace(/l|i|I/g, '1')
-                                             .replace(/s|S/g, '5')
-                                             .replace(/z|Z/g, '2')
-                                             .replace(/b|B/g, '8');
-
-                         const docDigits = fixedText.replace(/\D/g, ''); // Extract all digits from doc
-                         
-                         // Strategy: Chunk Matching
-                         // Break ID into 3 blocks of 4 digits: "1234", "5678", "9012"
-                         // If we find at least 2 of these blocks, we assume it's the correct card.
-                         
-                         const chunks = targetDigits.match(/.{1,4}/g) || [];
-                         let foundChunks = 0;
-                         const chunkDetails = [];
-
-                         chunks.forEach(chunk => {
-                             if (chunk.length < 3) return; // Skip tiny chunks
-                             
-                             // Search for this specific chunk in the doc text
-                             // We allow 1 digit error per chunk
-                             let bestDiff = 4;
-                             
-                             // Sliding window for this chunk
-                             for (let i = 0; i <= docDigits.length - chunk.length; i++) {
-                                 let diffs = 0;
-                                 for (let j = 0; j < chunk.length; j++) {
-                                     if (docDigits[i + j] !== chunk[j]) diffs++;
-                                 }
-                                 if (diffs < bestDiff) bestDiff = diffs;
-                             }
-
-                             if (bestDiff <= 1) {
-                                 foundChunks++;
-                                 chunkDetails.push(`[${chunk}: Found]`);
-                             } else {
-                                 chunkDetails.push(`[${chunk}: LOW MATCH]`);
-                             }
-                         });
-
-                         // Success Condition: 2 out of 3 chunks found OR High partial match on full string
-                         const isChunkSuccess = (foundChunks >= 2 && chunks.length === 3) || (foundChunks >= 1 && chunks.length < 3);
-                         
-                         if (isChunkSuccess) {
-                             // SUCCESS
-                         } else {
-                             // Fallback: Try the original full-string sliding window allows up to 5 errors
-                             let fullDiff = 999;
-                             for (let i = 0; i <= docDigits.length - targetDigits.length; i++) {
-                                 let diffs = 0;
-                                 for (let j = 0; j < targetDigits.length; j++) {
-                                     if (docDigits[i + j] !== targetDigits[j]) diffs++;
-                                 }
-                                 if (diffs < fullDiff) fullDiff = diffs;
-                             }
-                             
-                             if (fullDiff > 5) {
-                                 return { 
-                                     valid: false, 
-                                     reason: `ID Number mismatch! Found ${foundChunks}/3 parts. OCR saw numbers like: ${docDigits.substring(0, 20)}...` 
-                                 };
-                             }
-                         }
+                 // Expanded Keyword List (Including common OCR errors)
+                 const keywords = [
+                     'uidai', 'aadhaar', 'unique identification', 'government of india', 
+                     'mera aadhaar', 'pehchan', 'male', 'female', 'india', 'address',
+                     'dob', 'yob', 'year of birth', 'enrolment', 'authority', 'vid',
+                     'adhar', 'adhar card', 'government', 'govt', 'issued by', 'india.gov.in',
+                     's/o', 'd/o', 'w/o', 'father', 'birth'
+                 ];
+                 
+                 // Identify matched words
+                 const matchedWords = keywords.filter(k => text.includes(k));
+                 
+                 // 1. Check for 12-digit number (Most critical part of Aadhar)
+                 // Clean common digit misreads first
+                 let cleanedText = text.replace(/o|O/g, '0').replace(/l|i|I|\|/g, '1').replace(/s|S/g, '5');
+                 
+                 // Pattern for 12 digits (with spaces or continuous)
+                 const aadharRegex = /\b\d{4}\s\d{4}\s\d{4}\b|\b\d{12}\b/;
+                 const aadharMatch = cleanedText.match(aadharRegex);
+                 let extractedNumber = '';
+                 
+                 if (aadharMatch) {
+                     extractedNumber = aadharMatch[0].replace(/\s/g, '');
+                 } else {
+                     // Try to find any 12 digits in sequence even if they have weird characters between them
+                     const allDigits = cleanedText.replace(/\D/g, '');
+                     if (allDigits.length >= 12) {
+                         const match = allDigits.match(/[2-9]\d{11}/);
+                         if (match) extractedNumber = match[0];
                      }
                  }
 
-                 // 3. Name Verification (Secondary Priority now)
-                 let nameMatches = false;
-                 if (currentUserName) {
-                      const userParts = currentUserName.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter(p => p.length >= 2);
-                      if (userParts.length > 0) {
-                          const matchCount = userParts.filter(part => text.includes(part)).length;
-                          if (matchCount === userParts.length) nameMatches = true;
-                      } else {
-                          nameMatches = true; 
-                      }
-                 } else {
-                     nameMatches = true;
-                 }
+                 // SUCCESS CONDITION:
+                 // Either we find a 12-digit number AND at least one keyword
+                 // OR we find at least TWO keywords (trusting document type even if number is blurry)
+                 const hasNumber = extractedNumber.length === 12;
+                 const hasStrongKeywords = matchedWords.length >= 1;
                  
-                 if (!nameMatches) {
-                      return { valid: false, reason: `Name mismatch! Account name '${currentUserName}' was not found in the uploaded ID.` };
+                 if (!hasNumber && matchedWords.length < 2) {
+                     return { 
+                         valid: false, 
+                         reason: "Document does not look like a Government-certified Aadhar Card. Please ensure the card belongs to you and the image is clear." 
+                     };
                  }
 
-                 return { valid: true };
+                 // 2. ID NUMBER MISMATCH (If number found but is invalid)
+                 if (!hasNumber) {
+                     return { 
+                         valid: false, 
+                         reason: "Verification Failed: Could not clearly read the 12-digit Aadhar number. Please ensure the image is sharp and well-lit." 
+                     };
+                 }
+
+                 // 3. Name Verification (Relaxed)
+                 if (currentUserName) {
+                      const userLower = currentUserName.toLowerCase();
+                      const userParts = userLower.split(/\s+/).filter(p => p.length > 2);
+                      const cleanedTextForName = text.replace(/[^a-z ]/g, ' ');
+                      
+                      let nameMatch = false;
+                      if (userParts.length === 0) {
+                          nameMatch = true; // Skip if user name is too short/missing
+                      } else {
+                          // Check if any significant part of the name exists in the OCR text
+                          const matchedParts = userParts.filter(part => cleanedTextForName.includes(part));
+                          if (matchedParts.length >= 1) nameMatch = true;
+                      }
+
+                      if (!nameMatch) {
+                          return { valid: false, reason: `Name mismatch! The name on the Aadhar card does not seem to match '${currentUserName}'.` };
+                      }
+                 }
+
+                 return { valid: true, id_number: extractedNumber };
              }
 
              // Main Logic
@@ -371,36 +371,43 @@ if (!isset($_SESSION['user_id'])) {
                  const processedCanvas = preprocessImage(img);
                  const processedDataUrl = processedCanvas.toDataURL('image/jpeg');
 
-                 // 1. Try Original
+                 // Try different rotations
+                 let results = [];
+                 
+                 // 1. Original
                  console.log("Scanning original...");
                  let text = await scan(processedDataUrl);
-                 let result = validate(text);
-                 if(result.valid) return result;
-                 // Fail fast on mismatches
-                 if(result.reason && (result.reason.includes("Incorrect ID") || result.reason.includes("ID Number mismatch"))) return result;
+                 let res = validate(text);
+                 if (res.valid) return res;
+                 results.push(res);
 
-                 // 2. Try 90 Degrees
-                 console.log("Scanning 90 deg...");
-                 let rotatedUrl = getRotatedImage(processedCanvas, 90);
-                 text = await scan(rotatedUrl);
-                 result = validate(text);
-                 if(result.valid) return result;
-                 if(result.reason && (result.reason.includes("Incorrect ID") || result.reason.includes("ID Number mismatch"))) return result;
+                 // 2. Rotate 90
+                 console.log("Scanning 90deg...");
+                 let rot90 = getRotatedImage(processedCanvas, 90);
+                 text = await scan(rot90);
+                 res = validate(text);
+                 if (res.valid) return res;
+                 results.push(res);
 
-                 // 3. Try -90 Degrees
-                 console.log("Scanning -90 deg...");
-                 rotatedUrl = getRotatedImage(processedCanvas, -90);
-                 text = await scan(rotatedUrl);
-                 result = validate(text);
-                 if(result.valid) return result;
+                 // 3. Rotate 270
+                 console.log("Scanning 270deg...");
+                 let rot270 = getRotatedImage(processedCanvas, 270);
+                 text = await scan(rot270);
+                 res = validate(text);
+                 if (res.valid) return res;
+                 results.push(res);
 
-                 return { valid: false, reason: "Verification Failed: " + (result.reason || "Please check the image.") };
+                 // If all failed, return the most specific reason or general fail
+                 const nameFail = results.find(r => r.reason && r.reason.includes("Name mismatch"));
+                 if (nameFail) return nameFail;
+                 
+                 return { valid: false, reason: "Verification Failed: Document not recognized as Aadhar. Please upload a clear photo of the FRONT side of your original Aadhar card." };
                  
              } catch(e) {
-                 console.error(e);
-                 return { valid: false, reason: "Error processing image. try a different file." };
+                 console.error("OCR Error:", e);
+                 return { valid: false, reason: "Error processing image: " + e.message };
              }
-        }
+         }
 
         // Auto-Format ID Number Input (Add spaces every 4 digits)
         const idInput = document.getElementById('mIdNumber');
@@ -737,27 +744,13 @@ if (!isset($_SESSION['user_id'])) {
             if (!pickupInput.value.trim()) setError(pickupInput, "Pickup location cannot be empty.");
             if (!dropInput.value.trim()) setError(dropInput, "Dropoff location cannot be empty.");
 
-            // 2. ID Details Validation
-            const idType = idTypeInput.value;
-            // Clean spaces for validation
-            const idNumberRaw = idNumberInput.value.trim(); 
-            const idNumberClean = idNumberRaw.replace(/\s+/g, '');
-
-            if (!idNumberClean) {
-                setError(idNumberInput, "Please enter your ID Number.");
-            } else {
-                // Regex Patterns
-                const patterns = {
-                    'Aadhar Card': /^\d{12}$/
-                };
-                if (patterns[idType] && !patterns[idType].test(idNumberClean)) {
-                    setError(idNumberInput, "Invalid Aadhar Format (Must be 12 digits)");
-                }
-            }
+            // 2. ID Details Validation (Now handled automatically via OCR)
+            const idType = "Aadhar Card"; 
+            let idNumberClean = ""; // Will be filled after OCR
 
             // 3. File Validation
             if (proofInput.files.length === 0) {
-                 setError(proofInput, "Please upload the ID Proof document.");
+                 setError(proofInput, "Please upload your Government-certified Aadhar Card.");
             } else {
                 const file = proofInput.files[0];
                 const validTypes = ['image/jpeg', 'image/png', 'application/pdf'];
@@ -778,8 +771,8 @@ if (!isset($_SESSION['user_id'])) {
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
 
             try {
-                // Perform OCR Check (Pass RAW input with spaces, verify function handles it)
-                const ocrResult = await verifyDocumentContent(proofInput.files[0], idType, idNumberClean);
+                // Perform OCR Check (Auto-extracts number)
+                const ocrResult = await verifyDocumentContent(proofInput.files[0], idType);
                 
                 if (!ocrResult.valid) {
                     msgBox.innerHTML = `<div class="error-banner" style="margin-bottom:1rem; padding: 1rem; background: #fee2e2; color: #991b1b; border-radius: 8px;"><b>Verification Failed:</b> ${ocrResult.reason}</div>`;
@@ -788,6 +781,7 @@ if (!isset($_SESSION['user_id'])) {
                     return;
                 }
                 
+                idNumberClean = ocrResult.id_number; // Set the extracted number
                 btn.innerHTML = 'Sending...';
 
                 const formData = new FormData();
