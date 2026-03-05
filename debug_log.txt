@@ -702,3 +702,9 @@ Checking by email: sharonshibupandakasalayil2028@mca.ajce.in
 Rows found via Email: 0
 Creating new user
 Login Success: sharonshibupandakasalayil2028@mca.ajce.in
+Callback hit at 2026-03-05 17:42:41
+Credential received
+User Info: amaldamy2028@mca.ajce.in, AMAL DAMY INT MCA 2023-2028, 114844317509602427057
+Step 5: Starting DB checks
+Rows found via Google ID: 1
+Login Success: amaldamy2028@mca.ajce.in

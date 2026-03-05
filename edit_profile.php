@@ -20,6 +20,7 @@ $messageType = '';
 // Handle Form Submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = trim($_POST['name']);
+    $phone = trim($_POST['phone'] ?? '');
     
     if (empty($name)) {
         $message = "Name cannot be empty.";
@@ -53,15 +54,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Update Database
         if ($messageType !== "error") {
             if ($profile_pic_path) {
-                $stmt = $conn->prepare("UPDATE users SET name = ?, profile_pic = ? WHERE user_id = ?");
-                $stmt->bind_param("ssi", $name, $profile_pic_path, $user_id);
+                $stmt = $conn->prepare("UPDATE users SET name = ?, phone = ?, profile_pic = ? WHERE user_id = ?");
+                $stmt->bind_param("sssi", $name, $phone, $profile_pic_path, $user_id);
             } else {
-                $stmt = $conn->prepare("UPDATE users SET name = ? WHERE user_id = ?");
-                $stmt->bind_param("si", $name, $user_id);
+                $stmt = $conn->prepare("UPDATE users SET name = ?, phone = ? WHERE user_id = ?");
+                $stmt->bind_param("ssi", $name, $phone, $user_id);
             }
             
             if ($stmt->execute()) {
                 $_SESSION['username'] = $name; // Update Session Name
+                $_SESSION['phone'] = $phone; // Update Session Phone
                 // if ($profile_pic_path) { $_SESSION['profile_pic'] = $profile_pic_path; } // Optional: Update Session Pic if you store it there
 
                 // Redirect to Dashboard on Success
@@ -76,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Fetch Current Data
-$stmt = $conn->prepare("SELECT name, email, profile_pic FROM users WHERE user_id = ?");
+$stmt = $conn->prepare("SELECT name, email, phone, profile_pic FROM users WHERE user_id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -191,10 +193,17 @@ if (!empty($user['profile_pic'])) {
                     <input type="text" name="name" class="form-input" value="<?php echo htmlspecialchars($user['name']); ?>" required>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 2rem;">
+                <div class="form-group" style="margin-bottom: 1.5rem;">
                     <label>Email Address</label>
-                    <input type="email" class="form-input" value="<?php echo htmlspecialchars($user['email']); ?>" disabled style="background: #f9fafb; cursor: not-allowed;">
-                    <span style="font-size: 0.8rem; color: var(--text-gray);">Email cannot be changed directly. Contact support if needed.</span>
+                    <input type="email" class="form-input" value="<?php echo htmlspecialchars($user['email']); ?>" disabled style="background: #f1f5f9; cursor: not-allowed; opacity: 0.7;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label>Phone Number (Required for Payments)</label>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span style="background: #f1f5f9; padding: 12px; border-radius: 8px; font-weight: 600; border: 1px solid #ddd; color: #64748b;">+91</span>
+                        <input type="tel" name="phone" id="regPhone" class="form-input" placeholder="9876543210" value="<?php echo htmlspecialchars($user['phone'] ?? ''); ?>" style="flex: 1;" maxlength="10" pattern="[0-9]{10}" required>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1rem;">

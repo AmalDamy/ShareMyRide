@@ -68,7 +68,7 @@ try {
     file_put_contents('debug_log.txt', "Step 5: Starting DB checks\n", FILE_APPEND);
 
     // Check if user exists by google_id
-    $stmt = $conn->prepare("SELECT user_id, name, email, role, google_id FROM users WHERE google_id = ?");
+    $stmt = $conn->prepare("SELECT user_id, name, email, phone, role, google_id FROM users WHERE google_id = ?");
     if (!$stmt) {
         throw new Exception("Prepare failed: " . $conn->error);
     }
@@ -92,7 +92,7 @@ try {
         
         file_put_contents('debug_log.txt', "Checking by email: $email\n", FILE_APPEND);
 
-        $stmt = $conn->prepare("SELECT user_id, name, email, role, google_id FROM users WHERE email = ?");
+        $stmt = $conn->prepare("SELECT user_id, name, email, phone, role, google_id FROM users WHERE email = ?");
         if (!$stmt) {
              throw new Exception("Prepare (email) failed: " . $conn->error);
         }
@@ -179,7 +179,8 @@ function loginUser($user) {
 
     $_SESSION['user_id'] = $user['user_id'];
     $_SESSION['username'] = $user['name']; // Use current name in DB
-    $_SESSION['email'] = $user['email'];   // Create session for email
+    $_SESSION['email'] = $user['email'];   
+    $_SESSION['phone'] = $user['phone'] ?? null;
     $_SESSION['role'] = $user['role'];
     
     file_put_contents('debug_log.txt', "Login Success: " . $_SESSION['email'] . "\n", FILE_APPEND);

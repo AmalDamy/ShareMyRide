@@ -203,11 +203,23 @@ if (!$rideId) {
             const price = document.getElementById('offerPrice').value;
             const details = document.getElementById('offerDetails').value;
 
-            // Simplified Validation for Edit
+            // Validate All Required
             if (!from || !to || !date || !time || !vehicle || !seats || !price) {
-                 alert("Please fill all required fields");
+                 document.getElementById('rideFormMessage').innerHTML = `<div class="error-banner">Please fill all required fields</div>`;
                  return;
             }
+
+            // Validate specifically for numbers
+            if (isNaN(seats) || parseInt(seats) < 1) {
+                showError('offerSeats', 'errorSeats', 'At least 1 seat required');
+                hasError = true;
+            }
+            if (isNaN(price) || parseFloat(price) <= 0) {
+                showError('offerPrice', 'errorPrice', 'Price must be greater than 0');
+                hasError = true;
+            }
+
+            if (hasError) return;
 
             // Show loading
             const btn = e.target.querySelector('button[type="submit"]');

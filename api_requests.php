@@ -29,6 +29,17 @@ if ($method === 'POST') {
         $id_type = $data['id_type'] ?? null;
         $id_number = $data['id_number'] ?? null;
         $passenger_id = $_SESSION['user_id'];
+        $phone = trim($data['phone'] ?? '');
+
+        // DEBUG: Log the phone capture
+        file_put_contents('debug_phone.txt', "User $passenger_id sent phone: '$phone' at " . date('H:i:s') . "\n", FILE_APPEND);
+
+        // Update user phone if provided
+        if (!empty($phone) && strlen($phone) >= 10) {
+            $phone = preg_replace('/[^0-9]/', '', $phone);
+            $conn->query("UPDATE users SET phone = '$phone' WHERE user_id = $passenger_id"); 
+            $_SESSION['phone'] = $phone;
+        }
 
         // Check if already requested
         $check = $conn->prepare("SELECT request_id, final_price FROM ride_requests WHERE ride_id = ? AND passenger_id = ?");
@@ -216,7 +227,8 @@ if ($method === 'POST') {
         }
 
         $sql = "SELECT rq.*, r.from_location, r.to_location, r.ride_date, r.ride_time, 
-                       u.name as passenger_name, u.email as passenger_email, u.profile_pic, u.rating 
+                       u.name as passenger_name, u.email as passenger_email, u.phone as passenger_phone, u.profile_pic, u.rating,
+                       (SELECT COUNT(*) FROM payments pay WHERE pay.request_id = rq.request_id AND pay.status = 'paid') as is_paid
                 FROM ride_requests rq 
                 JOIN rides r ON rq.ride_id = r.ride_id 
                 JOIN users u ON rq.passenger_id = u.user_id 

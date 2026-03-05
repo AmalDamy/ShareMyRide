@@ -45,29 +45,34 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                 <div class="form-group">
                     <label><i class="fas fa-route"></i> Distance (km) *</label>
-                    <input type="number" id="distance" class="form-input" placeholder="e.g., 150" oninput="calculate()">
+                    <input type="number" id="distance" class="form-input" placeholder="e.g., 150" min="0" oninput="calculate()">
+                    <span id="errorDistance" class="error-message" style="display:none; color: var(--error-red); font-size: 0.8rem; margin-top: 4px;">Distance cannot be negative</span>
                 </div>
                 <div class="form-group">
                     <label><i class="fas fa-tachometer-alt"></i> Vehicle Mileage (km/l) *</label>
-                    <input type="number" id="mileage" class="form-input" placeholder="e.g., 15" oninput="calculate()">
+                    <input type="number" id="mileage" class="form-input" placeholder="e.g., 15" min="0.1" step="0.1" oninput="calculate()">
+                    <span id="errorMileage" class="error-message" style="display:none; color: var(--error-red); font-size: 0.8rem; margin-top: 4px;">Efficiency must be positive</span>
                 </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                 <div class="form-group">
                     <label><i class="fas fa-gas-pump"></i> Fuel Price (₹/liter) *</label>
-                    <input type="number" id="fuelPrice" class="form-input" placeholder="e.g., 105" value="105" oninput="calculate()">
+                    <input type="number" id="fuelPrice" class="form-input" placeholder="e.g., 105" value="105" min="0" oninput="calculate()">
+                    <span id="errorFuelPrice" class="error-message" style="display:none; color: var(--error-red); font-size: 0.8rem; margin-top: 4px;">Price cannot be negative</span>
                 </div>
                 <div class="form-group">
                     <label><i class="fas fa-users"></i> Number of Passengers</label>
                     <input type="number" id="passengers" class="form-input" placeholder="e.g., 3" min="1" value="1" oninput="calculate()">
+                    <span id="errorPassengers" class="error-message" style="display:none; color: var(--error-red); font-size: 0.8rem; margin-top: 4px;">At least 1 passenger required</span>
                 </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                 <div class="form-group">
                     <label><i class="fas fa-road"></i> Additional Costs (Tolls, Parking)</label>
-                    <input type="number" id="additional" class="form-input" placeholder="e.g., 200" value="0" oninput="calculate()">
+                    <input type="number" id="additional" class="form-input" placeholder="e.g., 200" value="0" min="0" oninput="calculate()">
+                    <span id="errorAdditional" class="error-message" style="display:none; color: var(--error-red); font-size: 0.8rem; margin-top: 4px;">Costs cannot be negative</span>
                 </div>
                 <div class="form-group">
                     <label><i class="fas fa-sync-alt"></i> Round Trip?</label>
@@ -135,14 +140,42 @@
         }
 
         function calculate() {
-            const distance = parseFloat(document.getElementById('distance').value) || 0;
-            const mileage = parseFloat(document.getElementById('mileage').value) || 0;
-            const fuelPrice = parseFloat(document.getElementById('fuelPrice').value) || 0;
-            const passengers = parseInt(document.getElementById('passengers').value) || 1;
+            const distance = parseFloat(document.getElementById('distance').value);
+            const mileage = parseFloat(document.getElementById('mileage').value);
+            const fuelPrice = parseFloat(document.getElementById('fuelPrice').value);
+            const passengers = parseInt(document.getElementById('passengers').value);
             const additional = parseFloat(document.getElementById('additional').value) || 0;
             const roundTrip = parseFloat(document.getElementById('roundTrip').value) || 1;
 
-            if (distance > 0 && mileage > 0 && fuelPrice > 0) {
+            let hasError = false;
+
+            // Reset errors
+            document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+
+            if (distance < 0) {
+                document.getElementById('errorDistance').style.display = 'block';
+                hasError = true;
+            }
+            if (mileage <= 0) {
+                if(document.getElementById('mileage').value !== "") {
+                    document.getElementById('errorMileage').style.display = 'block';
+                }
+                hasError = true;
+            }
+            if (fuelPrice < 0) {
+                document.getElementById('errorFuelPrice').style.display = 'block';
+                hasError = true;
+            }
+            if (passengers < 1) {
+                document.getElementById('errorPassengers').style.display = 'block';
+                hasError = true;
+            }
+            if (additional < 0) {
+                document.getElementById('errorAdditional').style.display = 'block';
+                hasError = true;
+            }
+
+            if (!hasError && distance > 0 && mileage > 0 && fuelPrice > 0) {
                 const totalDistance = distance * roundTrip;
                 const fuelRequired = (totalDistance / mileage).toFixed(2);
                 const fuelCostCalc = (fuelRequired * fuelPrice).toFixed(2);

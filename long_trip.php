@@ -108,7 +108,7 @@ if (!isset($_SESSION['user_id'])) {
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                     <div class="form-group">
                         <label>Estimated Total Cost (₹)</label>
-                        <input type="number" id="totalCost" class="form-input" placeholder="Fuel + Tolls + Parking">
+                        <input type="number" id="totalCost" class="form-input" placeholder="Fuel + Tolls + Parking" min="1">
                         <span id="errorCost" class="error-message">Please enter estimated cost</span>
                     </div>
                     <div class="form-group">
@@ -260,14 +260,14 @@ if (!isset($_SESSION['user_id'])) {
             }
             
             // Validate Members
-            if (!seats || parseInt(seats) < 2) {
-                showError('totalMembers', 'errorMembers', 'At least 2 members required');
+            if (!seats || isNaN(seats) || parseInt(seats) < 2) {
+                showError('totalMembers', 'errorMembers', 'At least 2 members are required for a long trip');
                 hasError = true;
             }
-
+            
             // Validate Cost
-            if (!totalCost || parseFloat(totalCost) <= 0) {
-                showError('totalCost', 'errorCost', 'Please enter estimated total cost');
+            if (!totalCost || isNaN(totalCost) || parseFloat(totalCost) <= 0) {
+                showError('totalCost', 'errorCost', 'Please enter a valid total cost greater than 0');
                 hasError = true;
             }
 

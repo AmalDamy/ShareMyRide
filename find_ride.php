@@ -16,6 +16,7 @@ if (!isset($_SESSION['user_id'])) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Razorpay -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>if(!window.Razorpay) document.write('<script src="rzp_sdk.js"><\/script>');</script>
 </head>
 <body>
 
@@ -79,8 +80,8 @@ if (!isset($_SESSION['user_id'])) {
 
 
     <!-- Request Ride Modal -->
-    <div id="requestModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(5px);">
-        <div class="modal-content" style="background-color: #fefefe; margin: 5% auto; padding: 0; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+    <div id="requestModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(5px); animation: fadeIn 0.3s;">
+        <div class="modal-content" style="background-color: #fefefe; margin: 2rem auto; padding: 0; border: none; width: 95%; max-width: 450px; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden;">
             
             <div style="background: var(--primary-teal); padding: 1.5rem; color: white; display: flex; justify-content: space-between; align-items: center; border-radius: 16px 16px 0 0;">
                 <h2 style="margin: 0; font-size: 1.25rem;">Confirm Ride Request</h2>
@@ -95,92 +96,88 @@ if (!isset($_SESSION['user_id'])) {
 
                 <div id="modalContent" style="display: none;">
                     
-                    <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
-                        <div style="display: flex; flex-direction: column; align-items: center; margin-top: 5px;">
-                            <div style="width: 10px; height: 10px; background: var(--primary-teal); border-radius: 50%;"></div>
-                            <div style="width: 2px; flex: 1; background: #e5e7eb; margin: 4px 0;"></div>
-                            <div style="width: 10px; height: 10px; background: var(--text-dark); border-radius: 50%;"></div>
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1.25rem; background: #f8fafc; padding: 1rem; border-radius: 12px;">
+                        <div style="flex: 1; border-right: 1px dashed #e2e8f0; padding-right: 1rem;">
+                            <div id="mFrom" style="font-weight: 700; font-size: 1rem; color: var(--text-dark);">...</div>
+                            <div style="margin: 4px 0; color: #94a3b8;"><i class="fas fa-arrow-down" style="font-size: 0.8rem;"></i></div>
+                            <div id="mTo" style="font-weight: 700; font-size: 1rem; color: var(--text-dark);">...</div>
+                            <div id="mTime" style="color: var(--text-gray); font-size: 0.8rem; margin-top: 6px;">...</div>
                         </div>
-                        <div style="flex: 1;">
-                            <div style="margin-bottom: 1.5rem;">
-                                <div id="mFrom" style="font-weight: 700; font-size: 1.1rem; color: var(--text-dark);">...</div>
-                                <div id="mTime" style="color: var(--text-gray); font-size: 0.9rem;">...</div>
-                            </div>
-                            <div>
-                                <div id="mTo" style="font-weight: 700; font-size: 1.1rem; color: var(--text-dark);">...</div>
-                            </div>
-                        </div>
-                        <div style="text-align: right;">
-                             <div id="mPrice" style="font-size: 1.5rem; font-weight: 800; color: var(--dark-teal);">...</div>
-                             <div style="font-size: 0.8rem; color: var(--text-gray);">per seat</div>
+                        <div style="text-align: right; min-width: 80px; display: flex; flex-direction: column; justify-content: center;">
+                             <div id="mPrice" style="font-size: 1.25rem; font-weight: 800; color: var(--dark-teal);">...</div>
+                             <div style="font-size: 0.75rem; color: var(--text-gray);">per seat</div>
                         </div>
                     </div>
 
                     <!-- Custom Route Section -->
-                    <div style="background: #eff6ff; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #dbeafe;">
-                        <h4 style="margin: 0 0 10px 0; font-size: 0.95rem; color: #1e40af;">Customize Your Trip (Optional)</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div style="background: #eff6ff; padding: 0.75rem; border-radius: 12px; margin-bottom: 1rem; border: 1px solid #dbeafe;">
+                        <h4 style="margin: 0 0 8px 0; font-size: 0.85rem; color: #1e40af; display: flex; align-items: center; gap: 0.4rem;">
+                            <i class="fas fa-magic"></i> Customize Pickup/Drop
+                        </h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                             <div class="form-group" style="margin:0;">
-                                <label style="font-size: 0.8rem;">My Pickup</label>
-                                <input type="text" id="mCustomPickup" class="form-input" style="font-size: 0.9rem; padding: 6px;" oninput="recalcPrice()">
+                                <input type="text" id="mCustomPickup" class="form-input" style="font-size: 0.85rem; padding: 8px; height: 36px;" placeholder="My Pickup" oninput="recalcPrice()">
                             </div>
                             <div class="form-group" style="margin:0;">
-                                <label style="font-size: 0.8rem;">My Dropoff</label>
-                                <input type="text" id="mCustomDrop" class="form-input" style="font-size: 0.9rem; padding: 6px;" oninput="recalcPrice()">
+                                <input type="text" id="mCustomDrop" class="form-input" style="font-size: 0.85rem; padding: 8px; height: 36px;" placeholder="My Dropoff" oninput="recalcPrice()">
                             </div>
                         </div>
-                        <div id="priceAdjustmentMsg" style="margin-top: 8px; font-size: 0.85rem; color: #059669; font-weight: 600; display: none;">
-                            <i class="fas fa-tag"></i> Price updated for partial route!
-                        </div>
-                        <div id="finalPriceDisplay" style="margin-top: 5px; font-size: 1.1rem; font-weight: 800; color: #1e40af; text-align: right;">
-                            Total: ₹<span id="txtFinalPrice">0</span>
-                        </div>
-                    </div>
-
-                    <div style="background: #f9fafb; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1rem;">
-                        <div style="width: 40px; height: 40px; background: #e5e7eb; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-user" style="color: #9ca3af;"></i>
-                        </div>
-                        <div>
-                            <div id="mDriver" style="font-weight: 600; color: var(--text-dark);">...</div>
-                            <div style="font-size: 0.85rem; color: var(--text-gray);">
-                                <i class="fas fa-car"></i> <span id="mVehicle">...</span>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                            <div id="priceAdjustmentMsg" style="font-size: 0.75rem; color: #059669; font-weight: 600; display: none;">
+                                <i class="fas fa-tag"></i> Discount applied!
+                            </div>
+                            <div id="finalPriceDisplay" style="font-size: 1rem; font-weight: 800; color: #1e40af; margin-left: auto;">
+                                Total: ₹<span id="txtFinalPrice">0</span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="form-group" style="margin-bottom: 1.5rem;">
-                        <label>Seats Required</label>
-                        <select id="mSeats" class="form-input">
-                            <option value="1">1 Seat</option>
-                            <option value="2">2 Seats</option>
-                            <option value="3">3 Seats</option>
-                        </select>
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: stretch;">
+                        <div style="flex: 2; background: #f9fafb; padding: 0.75rem; border-radius: 12px; display: flex; align-items: center; gap: 0.75rem; border: 1px solid #f1f5f9;">
+                            <div style="width: 32px; height: 32px; background: #e2e8f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i class="fas fa-user-tie" style="color: #64748b; font-size: 0.9rem;"></i>
+                            </div>
+                            <div style="overflow: hidden;">
+                                <div id="mDriver" style="font-weight: 600; color: var(--text-dark); font-size: 0.85rem; white-space: nowrap; text-overflow: ellipsis;">...</div>
+                                <div id="mVehicle" style="font-size: 0.75rem; color: var(--text-gray); white-space: nowrap; text-overflow: ellipsis;">...</div>
+                            </div>
+                        </div>
+                        <div style="flex: 1;">
+                            <select id="mSeats" class="form-input" style="height: 100%; font-size: 0.85rem; padding: 8px; border-radius: 12px; background: #f8fafc;">
+                                <option value="1">1 Seat</option>
+                                <option value="2">2 Seats</option>
+                                <option value="3">3 Seats</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Hidden inputs for backward compatibility/internal tracking if needed, though we extract from OCR now -->
                     <input type="hidden" id="mIdType" value="Aadhar Card">
                     <input type="hidden" id="mIdNumber" value="">
 
-                    <div class="form-group" style="margin-bottom: 2rem;">
-                        <label style="display: flex; align-items: center; gap: 0.5rem;">
-                            <i class="fas fa-id-card" style="color: var(--primary-teal);"></i> 
-                            Upload Govt. Certified Aadhar Card *
-                        </label>
-                        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('mProof').click()" style="border: 2px dashed #cbd5e1; border-radius: 12px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.3s; background: #f8fafc;">
-                            <i class="fas fa-cloud-upload-alt" style="font-size: 2.5rem; color: #94a3b8; margin-bottom: 1rem;"></i>
-                            <p style="margin: 0; color: #64748b; font-weight: 500;">Click to upload or drag and drop</p>
-                            <p style="margin: 5px 0 0; color: #94a3b8; font-size: 0.8rem;">JPG, PNG or PDF (Max 5MB)</p>
-                            <div id="fileSelectedName" style="margin-top: 1rem; font-weight: 600; color: var(--primary-teal); display: none;"></div>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('mProof').click()" style="border: 1px dashed #cbd5e1; border-radius: 12px; padding: 1rem; text-align: center; cursor: pointer; transition: all 0.3s; background: #f8fafc;">
+                            <i class="fas fa-id-card" style="font-size: 1.2rem; color: var(--primary-teal); margin-bottom: 4px;"></i>
+                            <p id="uploadText" style="margin: 0; color: #64748b; font-weight: 600; font-size: 0.85rem;">Upload Aadhar (Govt. Certified) *</p>
+                            <div id="fileSelectedName" style="margin-top: 4px; font-weight: 600; color: var(--primary-teal); display: none; font-size: 0.75rem;"></div>
                         </div>
                         <input type="file" id="mProof" class="form-input" accept="image/*,.pdf" style="display: none;" onchange="handleFileSelect(this)">
-                        <div style="margin-top: 1rem; padding: 1rem; background: #f0fdf4; border-radius: 8px; border: 1px solid #bbf7d0; display: flex; gap: 0.75rem; align-items: flex-start;">
-                            <i class="fas fa-info-circle" style="color: #16a34a; margin-top: 3px;"></i>
-                            <span style="font-size: 0.85rem; color: #166534; line-height: 1.4;">
-                                <strong>ID Required:</strong> Upload any government-certified ID card. The driver will verify your ID in person before accepting the ride.
-                            </span>
-                        </div>
                     </div>
+
+                    <?php if (empty($_SESSION['phone'])): ?>
+                    <div class="form-group" style="margin-bottom: 1.25rem;">
+                        <label style="font-size: 0.8rem; font-weight: 700; color: #475569; display: block; margin-bottom: 6px;">
+                            <i class="fas fa-phone-alt"></i> Verify Phone Number
+                        </label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <span style="background: #f1f5f9; padding: 10px; border-radius: 8px; font-weight: 700; border: 1px solid #ddd; color: #64748b; font-size: 0.85rem;">+91</span>
+                            <input type="tel" id="mPhone" class="form-input" placeholder="9876543210" style="flex: 1; padding: 10px; font-size: 0.85rem; height: auto;" maxlength="10" pattern="[0-9]{10}">
+                        </div>
+                        <p style="font-size: 0.7rem; color: #94a3b8; margin-top: 4px;">For SMS updates and secure payment saving.</p>
+                    </div>
+                    <?php else: ?>
+                    <input type="hidden" id="mPhone" value="<?php echo htmlspecialchars($_SESSION['phone']); ?>">
+                    <?php endif; ?>
 
                     <div id="modalMsg"></div>
 
@@ -232,20 +229,16 @@ if (!isset($_SESSION['user_id'])) {
                             color: #134e4a;
                         }
                     </style>
-                <div class="form-group" style="margin-bottom: 2rem;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
-                        <i class="fas fa-wallet" style="color: var(--primary-teal);"></i> 
-                        Select Payment Method
-                    </label>
+                <div class="form-group" style="margin-bottom: 1.5rem;">
                     <div class="payment-method-container">
-                        <div class="pay-method-card active" onclick="selectPayMethod('razorpay_card', this)">
-                            <i class="fas fa-credit-card"></i>
-                            <span>Card / Others</span>
+                        <div class="pay-method-card active" onclick="selectPayMethod('razorpay_card', this)" style="padding: 0.75rem; border-radius: 14px;">
+                            <i class="fas fa-credit-card" style="font-size: 1.2rem;"></i>
+                            <span style="font-size: 0.8rem;">Pay Now</span>
                             <input type="radio" name="paymentMethod" value="razorpay_card" checked style="display:none;">
                         </div>
-                        <div class="pay-method-card" onclick="selectPayMethod('cash', this)">
-                            <i class="fas fa-money-bill-wave"></i>
-                            <span>Pay Later</span>
+                        <div class="pay-method-card" onclick="selectPayMethod('cash', this)" style="padding: 0.75rem; border-radius: 14px;">
+                            <i class="fas fa-clock" style="font-size: 1.2rem;"></i>
+                            <span style="font-size: 0.8rem;">Pay Later</span>
                             <input type="radio" name="paymentMethod" value="cash" style="display:none;">
                         </div>
                     </div>
@@ -271,6 +264,9 @@ if (!isset($_SESSION['user_id'])) {
                             20% { left: 100%; }
                             100% { left: 100%; }
                         }
+                        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                        @keyframes scaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+                        @keyframes ping { 75%, 100% { transform: scale(1.5); opacity: 0; } }
                         .success-anim { animation: success-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
                         .btn-shiny {
                             position: relative;
@@ -295,16 +291,36 @@ if (!isset($_SESSION['user_id'])) {
                             box-shadow: 0 10px 20px rgba(13, 148, 136, 0.3);
                         }
                     </style>
-                    <div id="paymentDoneStep" style="display:none;">
-                        <div style="text-align:center; padding: 2rem 0;">
-                            <div id="payDoneIconDiv" class="success-anim" style="width:90px; height:90px; background:linear-gradient(135deg,#10b981,#059669); border-radius:50%; margin:0 auto 1.5rem; display:flex; align-items:center; justify-content:center; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);">
-                                <i id="payDoneIcon" class="fas fa-check" style="font-size:2.5rem; color:white;"></i>
+                    <div id="paymentDoneStep" style="display:none; animation: scaleUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);">
+                        <div style="text-align:center; padding: 1rem 0;">
+                            <div style="position: relative; width: 100px; height: 100px; margin: 0 auto 1.25rem;">
+                                <div id="payDoneIconDiv" class="success-anim" style="width:100%; height:100%; background:linear-gradient(135deg,#10b981,#059669); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow: 0 20px 40px rgba(16, 185, 129, 0.25); position: relative; z-index: 2;">
+                                    <i id="payDoneIcon" class="fas fa-check" style="font-size:3rem; color:white;"></i>
+                                </div>
+                                <div id="successPing" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 4px solid #10b981; border-radius: 50%; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; opacity: 0.4;"></div>
                             </div>
-                            <h2 id="payDoneTitle" style="color:#134e4a; margin-bottom:0.75rem; font-weight: 800; font-size: 1.75rem;">Payment Successful! 🎉</h2>
-                            <p id="payDoneMsg" style="color:#475569; font-size:1rem; margin-bottom:2rem; line-height: 1.5;">Your booking is confirmed! Get ready for your ride.</p>
-                            <button onclick="window.location.href='dashboard.php'" class="btn btn-primary btn-shiny" style="width:100%; padding: 1.1rem; font-size: 1.1rem; border-radius: 14px;">
-                                <i class="fas fa-arrow-right"></i> Go to My Dashboard
-                            </button>
+                            
+                            <div id="bookingBadge" style="display: inline-block; padding: 4px 12px; background: #ecfdf5; color: #065f46; border-radius: 50px; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i id="badgeIcon" class="fas fa-magic"></i> <span id="badgeText">Confirmation Secured</span>
+                            </div>
+
+                            <h2 id="payDoneTitle" style="color:#134e4a; margin-bottom:0.75rem; font-weight: 900; font-size: 1.75rem; letter-spacing: -0.5px;">Success! 🎉</h2>
+                            
+                            <div style="background: #f8fafc; padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid #f1f5f9;">
+                                <p id="payDoneMsg" style="color:#475569; font-size:0.9rem; margin-bottom:0; line-height: 1.5;"></p>
+                                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dotted #e2e8f0; color: #94a3b8; font-size: 0.7rem;">
+                                    <i class="fas fa-shield-alt"></i> Safe & Secure Booking
+                                </div>
+                            </div>
+
+                            <div id="paymentResultButtons">
+                                <button id="btnResultPrimary" onclick="window.location.href='dashboard.php'" class="btn btn-primary btn-shiny" style="width:100%; padding: 1rem; font-size: 1rem; border-radius: 14px; font-weight: 700; box-shadow: 0 8px 20px rgba(13, 148, 136, 0.3);">
+                                    <i class="fas fa-location-arrow" style="margin-right: 8px;"></i> View in Dashboard
+                                </button>
+                                <button id="btnResultRetry" onclick="retryPayment()" class="btn btn-outline" style="width:100%; margin-top: 10px; display:none; border-radius: 14px; padding: 0.75rem;">
+                                    <i class="fas fa-redo-alt"></i> Try Payment Again
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -322,41 +338,83 @@ if (!isset($_SESSION['user_id'])) {
     <script>
         function showPaymentResult(type, title, message) {
             document.getElementById('confirmButtons').style.display = 'none';
-            document.getElementById('modalMsg').innerHTML = '';
-            document.querySelectorAll('#modalContent > .form-group, #modalContent > div:not(#paymentDoneStep):not(#confirmButtons):not(#modalMsg)').forEach(el => el.style.opacity = '0.0');
+            document.getElementById('modalMsg').style.display = 'none';
+            
+            document.querySelectorAll('#modalContent > div:not(#paymentDoneStep)').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('#modalContent > .form-group').forEach(el => el.style.display = 'none');
             
             const iconDiv = document.getElementById('payDoneIconDiv');
             const icon = document.getElementById('payDoneIcon');
             const titleEl = document.getElementById('payDoneTitle');
             const msgEl = document.getElementById('payDoneMsg');
+            const badge = document.getElementById('bookingBadge');
+            const badgeText = document.getElementById('badgeText');
+            const badgeIcon = document.getElementById('badgeIcon');
+            const retryBtn = document.getElementById('btnResultRetry');
             
-            // Remove and re-add class to trigger animation
+            const modalContent = document.querySelector('.modal-content');
+            modalContent.style.maxWidth = '400px'; 
+            
             iconDiv.classList.remove('success-anim');
-            void iconDiv.offsetWidth; // trigger reflow
+            void iconDiv.offsetWidth; 
             iconDiv.classList.add('success-anim');
 
+            retryBtn.style.display = 'none';
+
             if (type === 'success') {
-                iconDiv.style.background = 'linear-gradient(135deg,#10b981,#059669)';
+                iconDiv.style.background = 'linear-gradient(135deg, #10b981, #059669)';
                 icon.className = 'fas fa-check';
                 titleEl.style.color = '#134e4a';
-                // Trigger confetti if possible
-                try {
-                    confettiEffect();
-                } catch(e) {}
+                badge.style.background = '#ecfdf5';
+                badge.style.color = '#065f46';
+                badgeText.textContent = 'Confirmation Secured';
+                badgeIcon.className = 'fas fa-magic';
+                try { confettiEffect(); } catch(e) {}
             } else if (type === 'warning') {
-                iconDiv.style.background = 'linear-gradient(135deg,#f59e0b,#d97706)';
+                iconDiv.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
                 icon.className = 'fas fa-exclamation-triangle';
                 titleEl.style.color = '#92400e';
+                badge.style.background = '#fffbeb';
+                badge.style.color = '#92400e';
+                badgeText.textContent = 'Action Required';
+                badgeIcon.className = 'fas fa-info-circle';
             } else {
-                 iconDiv.style.background = 'linear-gradient(135deg,#ef4444,#dc2626)';
-                 icon.className = 'fas fa-times';
-                 titleEl.style.color = '#7f1d1d';
+                iconDiv.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+                icon.className = 'fas fa-times';
+                titleEl.style.color = '#7f1d1d';
+                badge.style.background = '#fef2f2';
+                badge.style.color = '#991b1b';
+                badgeText.textContent = 'Payment Stopped';
+                badgeIcon.className = 'fas fa-shield-alt';
+                retryBtn.style.display = 'block';
             }
             
             titleEl.textContent = title;
             msgEl.textContent = message;
             
             document.getElementById('paymentDoneStep').style.display = 'block';
+        }
+
+        function retryPayment() {
+            // Re-hide results and show loader
+            document.getElementById('paymentDoneStep').style.display = 'none';
+            document.getElementById('confirmButtons').style.display = 'flex';
+            document.getElementById('modalMsg').style.display = 'block';
+            
+            // Restore form layout
+            document.querySelectorAll('#modalContent > div:not(#paymentDoneStep)').forEach(el => el.style.display = '');
+            document.querySelectorAll('#modalContent > .form-group').forEach(el => el.style.display = '');
+            const modalContent = document.querySelector('.modal-content');
+            modalContent.style.maxWidth = '450px'; 
+            
+            // Restart payment flow if we already have a request ID
+            if (pendingRequestId) {
+                const pMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+                if (pMethod.startsWith('razorpay')) {
+                    const methodType = pMethod === 'razorpay_upi' ? 'upi' : 'card';
+                    triggerRazorpay(methodType);
+                }
+            }
         }
 
         function confettiEffect() {
@@ -885,7 +943,11 @@ if (!isset($_SESSION['user_id'])) {
             // Reset payment steps
             document.getElementById('paymentDoneStep').style.display = 'none';
             document.getElementById('confirmButtons').style.display = 'flex';
-            document.querySelectorAll('#modalContent > .form-group, #modalContent > div').forEach(el => el.style.opacity = '');
+            document.getElementById('modalMsg').style.display = 'block';
+            document.querySelectorAll('#modalContent > div, #modalContent > .form-group').forEach(el => el.style.display = '');
+            const modalContent = document.querySelector('.modal-content');
+            if(modalContent) modalContent.style.maxWidth = '450px'; 
+
             pendingRequestId = null; pendingAmount = 0;
             // If URL has ride_id, clear it so reload works normally
             const url = new URL(window.location);
@@ -904,6 +966,7 @@ if (!isset($_SESSION['user_id'])) {
             // Inputs
             const seatsInput = document.getElementById('mSeats');
             const proofInput = document.getElementById('mProof');
+            const phoneInput = document.getElementById('mPhone');
             const idTypeInput = document.getElementById('mIdType');
             const idNumberInput = document.getElementById('mIdNumber');
             
@@ -929,6 +992,11 @@ if (!isset($_SESSION['user_id'])) {
             // 1. Custom Location Validation
             if (!pickupInput.value.trim()) setError(pickupInput, "Pickup location cannot be empty.");
             if (!dropInput.value.trim()) setError(dropInput, "Dropoff location cannot be empty.");
+
+            // Phone Validation
+            if (phoneInput && (phoneInput.value.length !== 10 || !/^\d+$/.test(phoneInput.value))) {
+                setError(phoneInput, "Please enter a valid 10-digit phone number.");
+            }
 
             // 2. ID type label (driver will verify in person)
             const idType = "Aadhar Card";
@@ -965,6 +1033,7 @@ if (!isset($_SESSION['user_id'])) {
                 formData.append('pickup_loc', pickupInput.value.trim());
                 formData.append('drop_loc', dropInput.value.trim());
                 formData.append('final_price', calculatedPrice.toFixed(2));
+                formData.append('phone', phoneInput ? phoneInput.value : '');
 
                 if (proofInput.files.length > 0) {
                     formData.append('proof_image', proofInput.files[0]);
@@ -1046,76 +1115,68 @@ if (!isset($_SESSION['user_id'])) {
                     return;
                 }
 
+                // Clean, minimal Razorpay options — no customer_id, no remember_customer,
+                // no config.display blocks. These cause "Payment Failed" in test/web mode.
                 const options = {
                     key:         order.key_id,
                     amount:      order.amount,
                     currency:    order.currency,
                     name:        'ShareMyRide',
-                    description: order.description,
+                    description: "TEST MODE: Use OTP 123456",
                     order_id:    order.order_id,
+                    // Enable card saving (linked to phone via Customer ID)
+                    customer_id: order.razorpay_customer_id || undefined,
+                    remember_customer: true, // Explicitly enable remember me
+                    save:        1, 
                     prefill: {
-                        name:  order.name,
-                        email: '<?php echo addslashes($_SESSION["email"] ?? ""); ?>',
-                        contact: '<?php echo addslashes($_SESSION["phone"] ?? "9999999999"); ?>'
+                        name:    order.name,
+                        email:   '<?php echo addslashes($_SESSION["email"] ?? ""); ?>',
+                        contact: order.phone || '9999999999'
                     },
-                    remember_customer: true, // Help Razorpay remember customer details
-                    theme: { color: '#4f46e5' },
+                    theme: { color: '#0f766e' },
                     handler: async function(response) {
                         // Verify on server
-                        const vRes = await fetch('api_payment.php', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                action:              'verify_payment',
-                                razorpay_order_id:   response.razorpay_order_id,
-                                razorpay_payment_id: response.razorpay_payment_id,
-                                razorpay_signature:  response.razorpay_signature,
-                                request_id:          pendingRequestId
-                            })
-                        });
-                        const vData = await vRes.json();
+                        try {
+                            const vRes = await fetch('api_payment.php', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    action:              'verify_payment',
+                                    razorpay_order_id:   response.razorpay_order_id,
+                                    razorpay_payment_id: response.razorpay_payment_id,
+                                    razorpay_signature:  response.razorpay_signature,
+                                    request_id:          pendingRequestId
+                                })
+                            });
+                            const vData = await vRes.json();
 
-                        if (!vData.success) {
-                            showPaymentResult('warning', 'Payment Unverified', 'Payment was received but verification failed. Contact support with ID: ' + response.razorpay_payment_id);
-                        } else {
-                            showPaymentResult('success', 'Payment Successful! 🎉', 'Your booking is confirmed! Payment ID: ' + response.razorpay_payment_id);
+                            if (!vData.success) {
+                                showPaymentResult('warning', 'Payment Unverified', 'Payment received, but server verification is pending. Contact support if status doesn\'t update.');
+                            } else {
+                                showPaymentResult('success', 'You\'re All Set! 🚀', 'Your booking is confirmed and ride details are saved. Your driver will see you soon!');
+                            }
+                        } catch(vErr) {
+                            console.error('Verify error:', vErr);
+                            showPaymentResult('warning', 'Verify Error', 'Payment made but verification failed. Contact support.');
                         }
                     },
                     modal: {
                         ondismiss: function() {
-                            // User closed without paying — request is created, so just show success but unpaid
+                            // User closed without paying — request exists, can pay later
                             showPaymentResult('warning', 'Payment Cancelled', 'Payment cancelled. Your request was still sent, you can pay from the dashboard later.');
                         }
                     }
                 };
 
-                if (!options.prefill.contact) {
-                    options.prefill.contact = '9999999999'; // Fallback
-                }
-
-                // Temporary aggressive block for Test Keys to bypass Razorpay's internal UPI block dropping without KYC
-                // Add customer_id to facilitate card saving (Razorpay recommends this)
-                options.customer_id = 'cust_<?php echo $_SESSION["user_id"]; ?>'; 
-                
-                if (preferredMethod === 'card') {
-                    options.config = {
-                        display: {
-                            blocks: {
-                                card: {
-                                    name: "Pay via Card",
-                                    instruments: [
-                                        { method: "card" },
-                                        { method: "netbanking" }
-                                    ]
-                                }
-                            },
-                            sequence: ["block.card"],
-                            preferences: { show_default_blocks: false }
-                        }
-                    };
-                }
-
                 const rzp = new Razorpay(options);
+
+                // Catch payment failures — show our custom UI instead of browser alert
+                rzp.on('payment.failed', async function(failureResponse) {
+                    const err = failureResponse.error || {};
+                    const msg = err.description || err.reason || 'Payment could not be completed.';
+                    console.error('Razorpay payment.failed:', failureResponse);
+                    showPaymentResult('error', 'Payment Failed', msg + ' Your ride request was still sent. You can pay later from the dashboard.');
+                });
 
                 rzp.open();
 

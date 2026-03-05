@@ -39,6 +39,7 @@ if ($action === 'signup') {
         $_SESSION['user_id'] = $user_id;
         $_SESSION['username'] = $name;
         $_SESSION['email'] = $email;
+        $_SESSION['phone'] = null; // New user, phone not set yet
         $_SESSION['role'] = 'user';
         
         echo JSON_encode(['success' => true, 'message' => 'Account created successfully']);
@@ -56,7 +57,7 @@ if ($action === 'signup') {
         exit;
     }
 
-    $stmt = $conn->prepare("SELECT user_id, name, email, password, role FROM users WHERE email = ?");
+    $stmt = $conn->prepare("SELECT user_id, name, email, phone, password, role FROM users WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -76,6 +77,7 @@ if ($action === 'signup') {
             $_SESSION['user_id'] = $user['user_id'];
             $_SESSION['username'] = $user['name'];
             $_SESSION['email'] = $user['email'];
+            $_SESSION['phone'] = $user['phone'];
             $_SESSION['role'] = $user['role'];
 
             echo JSON_encode(['success' => true, 'redirect' => ($user['role'] === 'admin' ? 'admin_dashboard.php' : 'dashboard.php'), 'message' => 'Login successful. Redirecting...']);

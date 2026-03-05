@@ -15,9 +15,76 @@ define('RZP_KEY_SECRET', 'UfTqm48a8Hh4CQHYwyGMQALO');
 $input  = json_decode(file_get_contents('php://input'), true);
 $action = $input['action'] ?? '';
 
+// ─── Helper: cURL wrapper for Razorpay API ───────────────────────────────────
+function rzpRequest($endpoint, $method = 'GET', $data = null) {
+    $ch = curl_init('https://api.razorpay.com/v1/' . $endpoint);
+    $opts = [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_USERPWD        => RZP_KEY_ID . ':' . RZP_KEY_SECRET,
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+    ];
+    if ($method === 'POST') {
+        $opts[CURLOPT_POST]       = true;
+        $opts[CURLOPT_POSTFIELDS] = json_encode($data);
+    }
+    curl_setopt_array($ch, $opts);
+    $body     = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err      = curl_error($ch);
+    curl_close($ch);
+    return ['body' => $body, 'code' => $httpCode, 'error' => $err];
+}
+
+function getRazorpayCustomerId($conn, $user_id) {
+    // Check local DB
+    $q = $conn->prepare("SELECT razorpay_customer_id, name, email, phone FROM users WHERE user_id = ?");
+    $q->bind_param("i", $user_id);
+    $q->execute();
+    $u = $q->get_result()->fetch_assoc();
+    if (!$u) return null;
+
+    $cid = $u['razorpay_customer_id'] ?? '';
+    $phone = preg_replace('/[^0-9]/', '', $u['phone'] ?? '');
+    
+    // Fallback to session if DB is empty
+    if (empty($phone) && !empty($_SESSION['phone'])) {
+        $phone = preg_replace('/[^0-9]/', '', $_SESSION['phone']);
+    }
+
+    if (empty($phone)) return $cid ?: null; 
+
+    if (empty($cid)) {
+        // Create new
+        $res = rzpRequest('customers', 'POST', [
+            'name'          => $u['name']  ?? 'Customer',
+            'email'         => $u['email'] ?? '',
+            'contact'       => $phone,
+            'fail_existing' => 0   
+        ]);
+        
+        if ($res['code'] === 200 || $res['code'] === 201) {
+            $customer = json_decode($res['body'], true);
+            if (!empty($customer['id'])) {
+                $cid = $customer['id'];
+                $conn->query("UPDATE users SET razorpay_customer_id = '$cid' WHERE user_id = $user_id");
+            }
+        }
+    } else {
+        // Force update existing contact info to ensure card saving uses current phone
+        rzpRequest('customers/' . $cid, 'POST', [
+            'contact' => $phone,
+            'email'   => $u['email'] ?? ''
+        ]);
+    }
+
+    return $cid ?: null;
+}
+
 // ─── ACTION: Create Order ────────────────────────────────────────────────────
 if ($action === 'create_order') {
-    $request_id  = intval($input['request_id'] ?? 0);
+    $request_id   = intval($input['request_id'] ?? 0);
     $passenger_id = $_SESSION['user_id'];
 
     if (!$request_id) {
@@ -29,9 +96,11 @@ if ($action === 'create_order') {
     $stmt = $conn->prepare("
         SELECT rq.request_id, rq.ride_id, rq.passenger_id, rq.seats_requested,
                rq.final_price, rq.status,
-               r.price_per_seat, r.from_location, r.to_location
+               r.price_per_seat, r.from_location, r.to_location,
+               u.phone, u.name
         FROM ride_requests rq
         JOIN rides r ON rq.ride_id = r.ride_id
+        JOIN users u ON rq.passenger_id = u.user_id
         WHERE rq.request_id = ? AND rq.passenger_id = ?
     ");
     $stmt->bind_param("ii", $request_id, $passenger_id);
@@ -58,14 +127,17 @@ if ($action === 'create_order') {
     }
 
     // Amount in paise (Razorpay expects smallest currency unit)
-    $amount_inr  = floatval($row['final_price']) > 0 ? floatval($row['final_price'])
-                   : (floatval($row['price_per_seat']) * intval($row['seats_requested']));
+    $amount_inr   = floatval($row['final_price']) > 0 ? floatval($row['final_price'])
+                    : (floatval($row['price_per_seat']) * intval($row['seats_requested']));
     $amount_paise = intval(round($amount_inr * 100));
 
     if ($amount_paise < 100) { // Minimum ₹1
         echo json_encode(['success' => false, 'message' => 'Amount too small for payment']);
         exit;
     }
+
+    // ── Get or create a real Razorpay Customer ID (enables card saving) ──────
+    $rzp_customer_id = getRazorpayCustomerId($conn, $passenger_id);
 
     // Create Razorpay Order via REST API
     $orderData = [
@@ -79,35 +151,21 @@ if ($action === 'create_order') {
         ]
     ];
 
-    $ch = curl_init('https://api.razorpay.com/v1/orders');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => json_encode($orderData),
-        CURLOPT_USERPWD        => RZP_KEY_ID . ':' . RZP_KEY_SECRET,
-        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-        CURLOPT_SSL_VERIFYPEER => false,
-        CURLOPT_SSL_VERIFYHOST => false
-    ]);
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlErr  = curl_error($ch);
-    curl_close($ch);
+    $res = rzpRequest('orders', 'POST', $orderData);
 
-    if ($response === false) {
-        $errMsg = 'cURL error: ' . $curlErr;
+    if ($res['body'] === false) {
+        echo json_encode(['success' => false, 'message' => 'cURL error: ' . $res['error']]);
+        exit;
+    }
+
+    if ($res['code'] !== 200) {
+        $errBody = json_decode($res['body'], true);
+        $errMsg  = $errBody['error']['description'] ?? 'Razorpay API error';
         echo json_encode(['success' => false, 'message' => $errMsg]);
         exit;
     }
 
-    if ($httpCode !== 200) {
-        $errBody = json_decode($response, true);
-        $errMsg  = isset($errBody['error']['description']) ? $errBody['error']['description'] : 'Razorpay API error';
-        echo json_encode(['success' => false, 'message' => $errMsg]);
-        exit;
-    }
-
-    $order = json_decode($response, true);
+    $order = json_decode($res['body'], true);
 
     // Store pending payment record
     $conn->query("
@@ -137,18 +195,22 @@ if ($action === 'create_order') {
     $ins->execute();
 
     echo json_encode([
-        'success'      => true,
-        'order_id'     => $orderId,
-        'amount'       => $amount_paise,
-        'currency'     => 'INR',
-        'amount_inr'   => $amount_inr,
-        'key_id'       => RZP_KEY_ID,
-        'request_id'   => $request_id,
-        'name'         => $_SESSION['username'] ?? 'Passenger',
-        'description'  => 'Ride: ' . $row['from_location'] . ' → ' . $row['to_location'],
+        'success'             => true,
+        'order_id'            => $orderId,
+        'amount'              => $amount_paise,
+        'currency'            => 'INR',
+        'amount_inr'          => $amount_inr,
+        'key_id'              => RZP_KEY_ID,
+        'request_id'          => $request_id,
+        'name'                => $_SESSION['username'] ?? 'Passenger',
+        'description'         => 'Ride: ' . $row['from_location'] . ' → ' . $row['to_location'],
+        'razorpay_customer_id'=> $rzp_customer_id,
+        'phone'               => preg_replace('/[^0-9]/', '', $row['phone'] ?? $row['user_phone'] ?? '9999999999'),
     ]);
     exit;
 }
+
+
 
 // ─── ACTION: Verify Payment ──────────────────────────────────────────────────
 if ($action === 'verify_payment') {

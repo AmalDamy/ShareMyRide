@@ -143,6 +143,26 @@ if ($method === 'GET') {
     $input = json_decode(file_get_contents('php://input'), true);
     $action = $input['action'] ?? 'create';
 
+    // SERVER-SIDE VALIDATION
+    if (in_array($action, ['create', 'update'])) {
+        $price = floatval($input['price'] ?? 0);
+        $seats = intval($input['seats'] ?? 0);
+        $total_cost = floatval($input['total_cost'] ?? 0);
+
+        if ($price <= 0) {
+            echo JSON_encode(['success' => false, 'message' => 'Price per seat must be greater than 0']);
+            exit;
+        }
+        if ($seats <= 0) {
+            echo JSON_encode(['success' => false, 'message' => 'Total seats must be at least 1']);
+            exit;
+        }
+        if (($input['type'] ?? '') === 'long' && $total_cost <= 0) {
+            echo JSON_encode(['success' => false, 'message' => 'Total trip cost must be provided']);
+            exit;
+        }
+    }
+
     // ACTION: COMPLETE RIDE
     if ($action === 'complete') {
         $ride_id = $input['ride_id'] ?? 0;

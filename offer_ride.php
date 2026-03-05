@@ -244,14 +244,14 @@ if (!isset($_SESSION['user_id'])) {
             }
 
             // Validate Seats
-            if (!seats || parseInt(seats) < 1) {
+            if (!seats || isNaN(seats) || parseInt(seats) < 1) {
                 showError('offerSeats', 'errorSeats', 'At least 1 seat required');
                 hasError = true;
             }
 
             // Validate Price
-            if (!price || parseInt(price) < 0) {
-                showError('offerPrice', 'errorPrice', 'Invalid price');
+            if (!price || isNaN(price) || parseFloat(price) <= 0) {
+                showError('offerPrice', 'errorPrice', 'Price must be greater than 0');
                 hasError = true;
             }
             

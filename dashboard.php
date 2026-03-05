@@ -58,6 +58,7 @@ $co2Saved = $ridesTaken * 2.5;
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Razorpay Checkout -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>if(!window.Razorpay) document.write('<script src="rzp_sdk.js"><\/script>');</script>
 </head>
 <body style="background-color: #f3f4f6;">
 
@@ -746,14 +747,25 @@ $co2Saved = $ridesTaken * 2.5;
                                             <i class="fas fa-star" style="font-size: 0.7rem;"></i> ${rating}
                                         </span>
                                     </div>
+                                    <div style="color: var(--text-gray); font-size: 0.85rem; margin-top:2px;">
+                                        <i class="fas fa-phone-alt" style="color: var(--primary-teal); font-size: 0.8rem;"></i> <strong>+91 ${req.passenger_phone || 'N/A'}</strong>
+                                    </div>
                                     <div style="color: var(--text-gray); font-size: 0.85rem;">
                                         Wants <strong>${req.seats_requested}</strong> seat(s) for this trip
                                     </div>
                                 </div>
                             </div>
                             
-                            <div style="background: #f8fafc; padding: 0.5rem; border-radius: 6px; font-size: 0.85rem; color: var(--text-gray); margin-bottom: 0.75rem;">
-                                <i class="fas fa-route" style="color: var(--primary-teal);"></i> Trip: <strong>${req.from_location}</strong> to <strong>${req.to_location}</strong>
+                            <div style="background: #f8fafc; padding: 0.5rem; border-radius: 6px; font-size: 0.85rem; color: var(--text-gray); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                                <span><i class="fas fa-route" style="color: var(--primary-teal);"></i> Trip: <strong>${req.from_location}</strong> to <strong>${req.to_location}</strong></span>
+                                <span style="font-weight: 700; color: var(--primary-teal); font-size: 0.95rem;">₹${req.final_price || 0}</span>
+                            </div>
+
+                            <div style="margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px;">
+                                ${parseInt(req.is_paid) > 0 
+                                    ? '<span class="trip-badge" style="background:#d1fae5; color:#065f46; border: 1px solid #10b981; font-weight: 700;"><i class="fas fa-check-circle"></i> Paid</span>' 
+                                    : '<span class="trip-badge" style="background:#fff7ed; color:#9a3412; border: 1px solid #f97316;"><i class="fas fa-clock"></i> Payment Pending</span>'
+                                }
                             </div>
                             
                             ${actionArea}
@@ -823,6 +835,9 @@ $co2Saved = $ridesTaken * 2.5;
                     name:        'ShareMyRide',
                     description: order.description,
                     order_id:    order.order_id,
+                    // Pass real Razorpay Customer ID so saved cards work
+                    customer_id: order.razorpay_customer_id || undefined,
+                    save:        order.razorpay_customer_id ? 1 : 0,
                     prefill: {
                         name:    order.name,
                         email:   '<?php echo addslashes($_SESSION["email"] ?? ""); ?>',
@@ -872,14 +887,23 @@ $co2Saved = $ridesTaken * 2.5;
                     }
                 };
 
-                }
-
                 const rzp = new Razorpay(options);
+
+                // Intercept Razorpay payment failure — show our custom alert instead
+                // of the raw native browser alert("Oops! Something went wrong. Payment Failed")
+                rzp.on('payment.failed', async function(failureResponse) {
+                    const err = failureResponse.error || {};
+                    const msg = err.description || err.reason || 'Payment could not be completed. Please try again.';
+                    console.error('Razorpay payment.failed:', failureResponse);
+                    await RideManager.showAlert('Payment Failed', msg, 'error');
+                });
+
                 rzp.open();
 
             } catch(e) {
                 console.error('Payment error:', e);
-                await RideManager.showAlert('Error', 'Could not initiate payment. Please try again.', 'error');
+                const cause = (typeof window.Razorpay === 'undefined') ? 'The payment system was blocked by an adblocker or security extension. Please disable it and try again.' : (e.message || e);
+                await RideManager.showAlert('Payment Error', cause, 'error');
             }
         }
         
