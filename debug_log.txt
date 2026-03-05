@@ -648,3 +648,57 @@ User Info: amaldamy2028@mca.ajce.in, AMAL DAMY INT MCA 2023-2028, 11484431750960
 Step 5: Starting DB checks
 Rows found via Google ID: 1
 Login Success: amaldamy2028@mca.ajce.in
+Callback hit at 2026-03-02 17:31:50
+Credential received
+User Info: sharemyride17@gmail.com, ShareMyRide, 109258318570260008343
+Step 5: Starting DB checks
+Rows found via Google ID: 1
+Login Success: sharemyride17@gmail.com
+Callback hit at 2026-03-02 17:36:24
+Credential received
+User Info: amaldamy2028@mca.ajce.in, AMAL DAMY INT MCA 2023-2028, 114844317509602427057
+Step 5: Starting DB checks
+Rows found via Google ID: 1
+Login Success: amaldamy2028@mca.ajce.in
+Callback hit at 2026-03-02 17:37:25
+Credential received
+User Info: sharemyride17@gmail.com, ShareMyRide, 109258318570260008343
+Step 5: Starting DB checks
+Rows found via Google ID: 1
+Login Success: sharemyride17@gmail.com
+Callback hit at 2026-03-03 05:13:46
+Credential received
+User Info: sharemyride17@gmail.com, ShareMyRide, 109258318570260008343
+Step 5: Starting DB checks
+Rows found via Google ID: 1
+Login Success: sharemyride17@gmail.com
+Callback hit at 2026-03-03 05:18:10
+Credential received
+User Info: amaldamy2028@mca.ajce.in, AMAL DAMY INT MCA 2023-2028, 114844317509602427057
+Step 5: Starting DB checks
+Rows found via Google ID: 1
+Login Success: amaldamy2028@mca.ajce.in
+Callback hit at 2026-03-03 05:35:38
+Credential received
+User Info: alwinvarghese2028@mca.ajce.in, ALWIN VARGHESE INT MCA 2023-2028, 117868528998152118832
+Step 5: Starting DB checks
+Rows found via Google ID: 0
+Checking by email: alwinvarghese2028@mca.ajce.in
+Rows found via Email: 0
+Creating new user
+Login Success: alwinvarghese2028@mca.ajce.in
+Callback hit at 2026-03-05 04:37:13
+Credential received
+User Info: amaldamy2028@mca.ajce.in, AMAL DAMY INT MCA 2023-2028, 114844317509602427057
+Step 5: Starting DB checks
+Rows found via Google ID: 1
+Login Success: amaldamy2028@mca.ajce.in
+Callback hit at 2026-03-05 13:13:46
+Credential received
+User Info: sharonshibupandakasalayil2028@mca.ajce.in, SHARON SHIBU PANDAKASALAYIL, 117878734870115198362
+Step 5: Starting DB checks
+Rows found via Google ID: 0
+Checking by email: sharonshibupandakasalayil2028@mca.ajce.in
+Rows found via Email: 0
+Creating new user
+Login Success: sharonshibupandakasalayil2028@mca.ajce.in

@@ -31,11 +31,13 @@ if ($method === 'POST') {
         $passenger_id = $_SESSION['user_id'];
 
         // Check if already requested
-        $check = $conn->prepare("SELECT request_id FROM ride_requests WHERE ride_id = ? AND passenger_id = ?");
+        $check = $conn->prepare("SELECT request_id, final_price FROM ride_requests WHERE ride_id = ? AND passenger_id = ?");
         $check->bind_param("ii", $ride_id, $passenger_id);
         $check->execute();
-        if ($check->get_result()->num_rows > 0) {
-            echo JSON_encode(['success' => false, 'message' => 'You have already requested this ride']);
+        $res = $check->get_result();
+        if ($res->num_rows > 0) {
+            $row = $res->fetch_assoc();
+            echo JSON_encode(['success' => false, 'message' => 'You have already requested this ride.', 'request_id' => $row['request_id'], 'amount' => $row['final_price'], 'already_requested' => true]);
             exit;
         }
 
@@ -100,7 +102,7 @@ if ($method === 'POST') {
             $nStmt->bind_param("issss", $driver_id, $title, $msg, $type, $link);
             $nStmt->execute();
 
-            echo JSON_encode(['success' => true, 'message' => 'Request sent successfully']);
+            echo JSON_encode(['success' => true, 'message' => 'Request sent successfully', 'request_id' => $stmt->insert_id, 'amount' => $final_price]);
         } else {
             echo JSON_encode(['success' => false, 'message' => 'Error sending request']);
         }
@@ -226,7 +228,8 @@ if ($method === 'POST') {
         // We also fetch r.status as ride_status. If the ride is globally completed, the user should be able to rate.
         $sql = "SELECT rq.*, r.from_location, r.to_location, r.ride_date, r.ride_time, r.price_per_seat, r.status as ride_status,
                        u.name as driver_name,
-                       (SELECT COUNT(*) FROM reviews rev WHERE rev.ride_id = rq.ride_id AND rev.reviewer_id = rq.passenger_id) as has_rated
+                       (SELECT COUNT(*) FROM reviews rev WHERE rev.ride_id = rq.ride_id AND rev.reviewer_id = rq.passenger_id) as has_rated,
+                       (SELECT COUNT(*) FROM payments pay WHERE pay.request_id = rq.request_id AND pay.status = 'paid') as is_paid
                 FROM ride_requests rq 
                 JOIN rides r ON rq.ride_id = r.ride_id 
                 JOIN users u ON r.driver_id = u.user_id 

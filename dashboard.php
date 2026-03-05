@@ -56,6 +56,8 @@ $co2Saved = $ridesTaken * 2.5;
     <title>User Dashboard - ShareMyRide</title>
     <link rel="stylesheet" href="style.css?v=<?php echo time(); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Razorpay Checkout -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body style="background-color: #f3f4f6;">
 
@@ -221,6 +223,78 @@ $co2Saved = $ridesTaken * 2.5;
         </div>
     </div>
 
+    <!-- Payment Success Modal -->
+    <style>
+        @keyframes success-pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes shine {
+            0% { left: -100%; }
+            20% { left: 100%; }
+            100% { left: 100%; }
+        }
+        .success-anim { animation: success-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        .btn-shiny-teal {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #0d9488, #0f766e);
+            border: none;
+            transition: all 0.3s ease;
+        }
+        .btn-shiny-teal::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -100%;
+            width: 50%;
+            height: 200%;
+            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+            transform: rotate(30deg);
+            animation: shine 3s infinite;
+        }
+        .btn-pay-modern {
+            padding: 0.6rem 1.2rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+        }
+        .btn-pay-modern.upi {
+            background: linear-gradient(135deg, #0d9488, #0f766e);
+            color: white;
+            box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
+        }
+        .btn-pay-modern.card {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-pay-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+        }
+    </style>
+    <div id="paymentSuccessModal" style="display:none; position:fixed; z-index:3000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(6px); align-items:center; justify-content:center;">
+        <div style="background:white; border-radius:24px; padding:3rem; max-width:440px; width:90%; text-align:center; box-shadow:0 30px 60px rgba(0,0,0,0.25); position: relative; overflow: hidden;">
+            <div id="dashboardConfettiContainer" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events: none;"></div>
+            <div id="paySuccessIconDiv" class="success-anim" style="width:90px; height:90px; background:linear-gradient(135deg,#10b981,#059669); border-radius:50%; margin:0 auto 1.5rem; display:flex; align-items:center; justify-content:center; box-shadow: 0 10px 20px rgba(16, 185, 129, 0.2);">
+                <i class="fas fa-check" style="font-size:2.5rem; color:white;"></i>
+            </div>
+            <h2 style="color:#134e4a; margin-bottom:0.75rem; font-weight: 800; font-size: 1.8rem;">Payment Successful! 🎉</h2>
+            <p id="paySuccessMsg" style="color:#475569; margin-bottom:2rem; font-size: 1rem; line-height: 1.5;">Your booking is confirmed.</p>
+            <button onclick="document.getElementById('paymentSuccessModal').style.display='none'; loadMyBookings();" class="btn btn-primary btn-shiny-teal" style="width:100%; padding: 1rem; font-size: 1.1rem; border-radius: 12px;">
+                <i class="fas fa-check-circle"></i> Back to My Bookings
+            </button>
+        </div>
+    </div>
+
     <!-- Usage of existing JS for API calls -->
     <script src="js/ride_manager.js?v=<?php echo time(); ?>"></script>
     <script>
@@ -307,9 +381,10 @@ $co2Saved = $ridesTaken * 2.5;
                         const isRideFinished = (req.ride_status === 'completed');
                         const isMyReqFinished = (req.status === 'completed');
                         const isRated = (parseInt(req.has_rated) > 0);
+                        const isPaid  = (parseInt(req.is_paid  ?? 0) > 0);
                         
                         // DEBUG INFO (Remove in production)
-                        const debugInfo = `<div style="font-size:0.7rem; color:#9ca3af; margin-top:5px;">Ref: #${req.request_id} | St: ${req.status} | RSt: ${req.ride_status || 'act'}</div>`;
+                        const debugInfo = `<div style="font-size:0.7rem; color:#9ca3af; margin-top:5px;">Ref: #${req.request_id} | St: ${req.status} | RSt: ${req.ride_status || 'act'} | Paid: ${isPaid ? 'Yes':'No'}</div>`;
 
                         // 1. Status Badge
                         if(req.status === 'pending') {
@@ -334,10 +409,19 @@ $co2Saved = $ridesTaken * 2.5;
                                     <a href="rate_ride.php?request_id=${req.request_id}" class="btn btn-primary" style="padding: 0.4rem 1rem; font-size: 0.9rem;">Rate Driver <i class="fas fa-star"></i></a>
                                 </div>`;
                              } else if (req.status === 'accepted') {
+                                // Show Pay Now if unpaid, Paid badge if already paid
+                                const payBtn = !isPaid
+                                    ? `<div style="display:flex; gap: 8px; justify-content: flex-end; margin-bottom: 10px; margin-top: 5px;">
+                                            <button onclick="startPayment(${req.request_id}, 'upi')" class="btn-pay-modern upi"><i class="fas fa-qrcode"></i> Pay UPI</button>
+                                            <button onclick="startPayment(${req.request_id}, 'card')" class="btn-pay-modern card"><i class="fas fa-credit-card"></i> Card/Others</button>
+                                       </div>`
+                                    : `<span class="trip-badge" style="background:#f0fdf4; color:#166534; font-weight:600; padding:6px 12px; border-radius:10px;"><i class="fas fa-check-circle"></i> Paid</span>`;
+
                                 actionButtons = `
                                     <div style="margin-top:5px; display:flex; flex-direction:column; align-items:flex-end; gap:5px;">
-                                        <a href="ride_details.php?id=${req.ride_id}" style="font-size:0.8rem; color:var(--primary-teal);">Track Ride</a>
-                                        <button onclick="confirmArrival(${req.request_id})" class="btn btn-outline" style="padding: 0.3rem 0.8rem; font-size: 0.8rem; border-color: var(--primary-teal); color: var(--primary-teal);">
+                                        <a href="ride_details.php?id=${req.ride_id}" style="font-size:0.85rem; color:var(--primary-teal); font-weight:600; margin-bottom: 5px; text-decoration: underline;">Track Ride</a>
+                                        ${payBtn}
+                                        <button onclick="confirmArrival(${req.request_id})" class="btn btn-outline" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-radius: 10px; border-color: var(--primary-teal); color: var(--primary-teal);">
                                             <i class="fas fa-check-circle"></i> End Trip & Rate
                                         </button>
                                     </div>
@@ -711,6 +795,93 @@ $co2Saved = $ridesTaken * 2.5;
                 }
             } catch(e) { console.error(e); }
         }
+
+        // ─── Razorpay Payment ────────────────────────────────────────────────
+        async function startPayment(requestId, preferredMethod = '') {
+            try {
+                // Step 1: Create Razorpay order on server
+                const res = await fetch('api_payment.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'create_order', request_id: requestId })
+                });
+                const order = await res.json();
+
+                if (!order.success) {
+                    await RideManager.showAlert('Payment Error', order.message, 'error');
+                    return;
+                }
+
+                // Step 2: Open Razorpay Checkout — minimal safe config for test mode on localhost.
+                // config.display blocks and upi_intent_enabled are NOT used here because they
+                // restrict payment methods and cause Razorpay to throw "Payment Failed" immediately
+                // in test/web environments.
+                const options = {
+                    key:         order.key_id,
+                    amount:      order.amount,
+                    currency:    order.currency,
+                    name:        'ShareMyRide',
+                    description: order.description,
+                    order_id:    order.order_id,
+                    prefill: {
+                        name:    order.name,
+                        email:   '<?php echo addslashes($_SESSION["email"] ?? ""); ?>',
+                        contact: '<?php echo addslashes(preg_replace("/[^0-9]/", "", $_SESSION["phone"] ?? "9999999999")); ?>'
+                    },
+                    theme: { color: '#0f766e' },
+                    handler: async function(response) {
+                        // Step 3: Verify payment signature on server
+                        try {
+                            const verifyRes = await fetch('api_payment.php', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    action:               'verify_payment',
+                                    razorpay_order_id:    response.razorpay_order_id,
+                                    razorpay_payment_id:  response.razorpay_payment_id,
+                                    razorpay_signature:   response.razorpay_signature,
+                                    request_id:           requestId
+                                })
+                            });
+                            const verifyData = await verifyRes.json();
+
+                            if (verifyData.success) {
+                                document.getElementById('paySuccessMsg').textContent = verifyData.message;
+                                const modal = document.getElementById('paymentSuccessModal');
+                                modal.style.display = 'flex';
+
+                                // Trigger Confetti animation
+                                const iconDiv = document.getElementById('paySuccessIconDiv');
+                                iconDiv.classList.remove('success-anim');
+                                void iconDiv.offsetWidth;
+                                iconDiv.classList.add('success-anim');
+                                triggerDashboardConfetti();
+                                loadMyBookings(); // Refresh booking list to show Paid status
+                            } else {
+                                await RideManager.showAlert('Verification Failed', verifyData.message, 'error');
+                            }
+                        } catch(verifyErr) {
+                            console.error('Verify error:', verifyErr);
+                            await RideManager.showAlert('Error', 'Payment made but verification failed. Contact support.', 'error');
+                        }
+                    },
+                    modal: {
+                        ondismiss: function() {
+                            console.log('Razorpay checkout dismissed by user');
+                        }
+                    }
+                };
+
+                }
+
+                const rzp = new Razorpay(options);
+                rzp.open();
+
+            } catch(e) {
+                console.error('Payment error:', e);
+                await RideManager.showAlert('Error', 'Could not initiate payment. Please try again.', 'error');
+            }
+        }
         
         async function deleteRide(id) {
             const confirmed = await RideManager.showConfirm("Delete Ride?", "Are you sure you want to delete this ride? This cannot be undone.");
@@ -734,6 +905,42 @@ $co2Saved = $ridesTaken * 2.5;
 
         function toggleMobileMenu() {
             document.getElementById('navLinks').classList.toggle('show');
+        }
+
+        function triggerDashboardConfetti() {
+            const container = document.getElementById('dashboardConfettiContainer');
+            if(!container) return;
+            container.innerHTML = '';
+            for(let i=0; i<40; i++) {
+                const conf = document.createElement('div');
+                conf.style.position = 'absolute';
+                conf.style.width = '8px';
+                conf.style.height = '8px';
+                conf.style.backgroundColor = ['#10b981','#f59e0b','#4f46e5','#ef4444','#8b5cf6'][Math.floor(Math.random()*5)];
+                conf.style.left = '50%';
+                conf.style.top = '30%';
+                conf.style.borderRadius = '2px';
+                
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = 4 + Math.random() * 8;
+                const vx = Math.cos(angle) * velocity;
+                const vy = Math.sin(angle) * velocity - 3;
+                
+                container.appendChild(conf);
+                
+                let x = 0, y = 0, opacity = 1;
+                const interval = setInterval(() => {
+                    x += vx;
+                    y += vy + (1.5/opacity); // gravity effect increase as opacity fade
+                    opacity -= 0.015;
+                    conf.style.transform = `translate(${x}px, ${y}px) rotate(${x*2}deg)`;
+                    conf.style.opacity = opacity;
+                    if(opacity <= 0) {
+                        clearInterval(interval);
+                        conf.remove();
+                    }
+                }, 20);
+            }
         }
     </script>
 </body>

@@ -14,6 +14,8 @@ if (!isset($_SESSION['user_id'])) {
     <title>Find a Ride - ShareMyRide</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Razorpay -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
 
@@ -172,17 +174,141 @@ if (!isset($_SESSION['user_id'])) {
                             <div id="fileSelectedName" style="margin-top: 1rem; font-weight: 600; color: var(--primary-teal); display: none;"></div>
                         </div>
                         <input type="file" id="mProof" class="form-input" accept="image/*,.pdf" style="display: none;" onchange="handleFileSelect(this)">
-                        <div style="margin-top: 1rem; padding: 1rem; background: #fff7ed; border-radius: 8px; border: 1px solid #ffedd5; display: flex; gap: 0.75rem; align-items: flex-start;">
-                            <i class="fas fa-shield-check" style="color: #f97316; margin-top: 3px;"></i>
-                            <span style="font-size: 0.85rem; color: #9a3412; line-height: 1.4;">
-                                <strong>Strict Verification:</strong> Only original, government-certified Aadhar cards are accepted. Our AI will verify the document authenticity and extract your ID details automatically.
+                        <div style="margin-top: 1rem; padding: 1rem; background: #f0fdf4; border-radius: 8px; border: 1px solid #bbf7d0; display: flex; gap: 0.75rem; align-items: flex-start;">
+                            <i class="fas fa-info-circle" style="color: #16a34a; margin-top: 3px;"></i>
+                            <span style="font-size: 0.85rem; color: #166534; line-height: 1.4;">
+                                <strong>ID Required:</strong> Upload any government-certified ID card. The driver will verify your ID in person before accepting the ride.
                             </span>
                         </div>
                     </div>
 
                     <div id="modalMsg"></div>
 
-                    <div style="display: flex; gap: 1rem;">
+                    <!-- Integrated Payment Options -->
+                    <style>
+                        .payment-method-container {
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 1rem;
+                            margin-top: 0.5rem;
+                        }
+                        .pay-method-card {
+                            border: 2px solid #e2e8f0;
+                            border-radius: 12px;
+                            padding: 1rem;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            gap: 0.5rem;
+                            background: white;
+                            text-align: center;
+                        }
+                        .pay-method-card i {
+                            font-size: 1.5rem;
+                            color: #64748b;
+                            transition: all 0.3s ease;
+                        }
+                        .pay-method-card span {
+                            font-size: 0.85rem;
+                            font-weight: 600;
+                            color: #475569;
+                        }
+                        .pay-method-card:hover {
+                            border-color: #0d9488;
+                            background: #f0fdfa;
+                        }
+                        .pay-method-card.active {
+                            border-color: #0d9488;
+                            background: #f0fdfa;
+                            box-shadow: 0 4px 12px rgba(13, 148, 136, 0.15);
+                        }
+                        .pay-method-card.active i {
+                            color: #0d9488;
+                            transform: scale(1.1);
+                        }
+                        .pay-method-card.active span {
+                            color: #134e4a;
+                        }
+                    </style>
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600;">
+                        <i class="fas fa-wallet" style="color: var(--primary-teal);"></i> 
+                        Select Payment Method
+                    </label>
+                    <div class="payment-method-container">
+                        <div class="pay-method-card active" onclick="selectPayMethod('razorpay_card', this)">
+                            <i class="fas fa-credit-card"></i>
+                            <span>Card / Others</span>
+                            <input type="radio" name="paymentMethod" value="razorpay_card" checked style="display:none;">
+                        </div>
+                        <div class="pay-method-card" onclick="selectPayMethod('cash', this)">
+                            <i class="fas fa-money-bill-wave"></i>
+                            <span>Pay Later</span>
+                            <input type="radio" name="paymentMethod" value="cash" style="display:none;">
+                        </div>
+                    </div>
+                </div>
+
+                    <script>
+                        function selectPayMethod(val, el) {
+                            document.querySelectorAll('.pay-method-card').forEach(c => c.classList.remove('active'));
+                            el.classList.add('active');
+                            el.querySelector('input').checked = true;
+                        }
+                    </script>
+
+                    <!-- Payment Done Step -->
+                    <style>
+                        @keyframes success-pop {
+                            0% { transform: scale(0.5); opacity: 0; }
+                            70% { transform: scale(1.1); }
+                            100% { transform: scale(1); opacity: 1; }
+                        }
+                        @keyframes shine {
+                            0% { left: -100%; }
+                            20% { left: 100%; }
+                            100% { left: 100%; }
+                        }
+                        .success-anim { animation: success-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+                        .btn-shiny {
+                            position: relative;
+                            overflow: hidden;
+                            background: linear-gradient(135deg, #0d9488, #0f766e);
+                            border: none;
+                            transition: all 0.3s ease;
+                        }
+                        .btn-shiny::after {
+                            content: '';
+                            position: absolute;
+                            top: -50%;
+                            left: -100%;
+                            width: 50%;
+                            height: 200%;
+                            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+                            transform: rotate(30deg);
+                            animation: shine 3s infinite;
+                        }
+                        .btn-shiny:hover {
+                            transform: translateY(-3px);
+                            box-shadow: 0 10px 20px rgba(13, 148, 136, 0.3);
+                        }
+                    </style>
+                    <div id="paymentDoneStep" style="display:none;">
+                        <div style="text-align:center; padding: 2rem 0;">
+                            <div id="payDoneIconDiv" class="success-anim" style="width:90px; height:90px; background:linear-gradient(135deg,#10b981,#059669); border-radius:50%; margin:0 auto 1.5rem; display:flex; align-items:center; justify-content:center; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);">
+                                <i id="payDoneIcon" class="fas fa-check" style="font-size:2.5rem; color:white;"></i>
+                            </div>
+                            <h2 id="payDoneTitle" style="color:#134e4a; margin-bottom:0.75rem; font-weight: 800; font-size: 1.75rem;">Payment Successful! 🎉</h2>
+                            <p id="payDoneMsg" style="color:#475569; font-size:1rem; margin-bottom:2rem; line-height: 1.5;">Your booking is confirmed! Get ready for your ride.</p>
+                            <button onclick="window.location.href='dashboard.php'" class="btn btn-primary btn-shiny" style="width:100%; padding: 1.1rem; font-size: 1.1rem; border-radius: 14px;">
+                                <i class="fas fa-arrow-right"></i> Go to My Dashboard
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem;" id="confirmButtons">
                         <button onclick="closeRequestModal()" class="btn btn-outline" style="flex: 1;">Cancel</button>
                         <button onclick="submitRequest()" id="btnConfirm" class="btn btn-primary" style="flex: 2;">Confirm Request</button>
                     </div>
@@ -194,6 +320,81 @@ if (!isset($_SESSION['user_id'])) {
     <script src="https://unpkg.com/tesseract.js@v4.0.2/dist/tesseract.min.js"></script>
     <script src="js/ride_manager.js"></script>
     <script>
+        function showPaymentResult(type, title, message) {
+            document.getElementById('confirmButtons').style.display = 'none';
+            document.getElementById('modalMsg').innerHTML = '';
+            document.querySelectorAll('#modalContent > .form-group, #modalContent > div:not(#paymentDoneStep):not(#confirmButtons):not(#modalMsg)').forEach(el => el.style.opacity = '0.0');
+            
+            const iconDiv = document.getElementById('payDoneIconDiv');
+            const icon = document.getElementById('payDoneIcon');
+            const titleEl = document.getElementById('payDoneTitle');
+            const msgEl = document.getElementById('payDoneMsg');
+            
+            // Remove and re-add class to trigger animation
+            iconDiv.classList.remove('success-anim');
+            void iconDiv.offsetWidth; // trigger reflow
+            iconDiv.classList.add('success-anim');
+
+            if (type === 'success') {
+                iconDiv.style.background = 'linear-gradient(135deg,#10b981,#059669)';
+                icon.className = 'fas fa-check';
+                titleEl.style.color = '#134e4a';
+                // Trigger confetti if possible
+                try {
+                    confettiEffect();
+                } catch(e) {}
+            } else if (type === 'warning') {
+                iconDiv.style.background = 'linear-gradient(135deg,#f59e0b,#d97706)';
+                icon.className = 'fas fa-exclamation-triangle';
+                titleEl.style.color = '#92400e';
+            } else {
+                 iconDiv.style.background = 'linear-gradient(135deg,#ef4444,#dc2626)';
+                 icon.className = 'fas fa-times';
+                 titleEl.style.color = '#7f1d1d';
+            }
+            
+            titleEl.textContent = title;
+            msgEl.textContent = message;
+            
+            document.getElementById('paymentDoneStep').style.display = 'block';
+        }
+
+        function confettiEffect() {
+            const container = document.getElementById('requestModal');
+            for(let i=0; i<30; i++) {
+                const conf = document.createElement('div');
+                conf.style.position = 'absolute';
+                conf.style.width = '8px';
+                conf.style.height = '8px';
+                conf.style.backgroundColor = ['#10b981','#f59e0b','#4f46e5','#ef4444'][Math.floor(Math.random()*4)];
+                conf.style.left = '50%';
+                conf.style.top = '40%';
+                conf.style.zIndex = '1000';
+                conf.style.borderRadius = '2px';
+                
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = 5 + Math.random() * 10;
+                const vx = Math.cos(angle) * velocity;
+                const vy = Math.sin(angle) * velocity - 5;
+                
+                container.appendChild(conf);
+                
+                let x = 50, y = 40, opacity = 1;
+                const interval = setInterval(() => {
+                    x += vx;
+                    y += vy + (1/opacity); // gravity
+                    opacity -= 0.02;
+                    conf.style.left = `calc(50% + ${x}px)`;
+                    conf.style.top = `calc(40% + ${y}px)`;
+                    conf.style.opacity = opacity;
+                    if(opacity <= 0) {
+                        clearInterval(interval);
+                        conf.remove();
+                    }
+                }, 20);
+            }
+        }
+
         // Tesseract Worker (Global)
         // Note: Initializing worker may take a moment.
         
@@ -339,25 +540,7 @@ if (!isset($_SESSION['user_id'])) {
                      };
                  }
 
-                 // 3. Name Verification (Relaxed)
-                 if (currentUserName) {
-                      const userLower = currentUserName.toLowerCase();
-                      const userParts = userLower.split(/\s+/).filter(p => p.length > 2);
-                      const cleanedTextForName = text.replace(/[^a-z ]/g, ' ');
-                      
-                      let nameMatch = false;
-                      if (userParts.length === 0) {
-                          nameMatch = true; // Skip if user name is too short/missing
-                      } else {
-                          // Check if any significant part of the name exists in the OCR text
-                          const matchedParts = userParts.filter(part => cleanedTextForName.includes(part));
-                          if (matchedParts.length >= 1) nameMatch = true;
-                      }
-
-                      if (!nameMatch) {
-                          return { valid: false, reason: `Name mismatch! The name on the Aadhar card does not seem to match '${currentUserName}'.` };
-                      }
-                 }
+                 // 3. Name Verification: Skipped — the driver will verify the card in person.
 
                  return { valid: true, id_number: extractedNumber };
              }
@@ -397,9 +580,7 @@ if (!isset($_SESSION['user_id'])) {
                  if (res.valid) return res;
                  results.push(res);
 
-                 // If all failed, return the most specific reason or general fail
-                 const nameFail = results.find(r => r.reason && r.reason.includes("Name mismatch"));
-                 if (nameFail) return nameFail;
+                 // If all rotations failed, return general fail
                  
                  return { valid: false, reason: "Verification Failed: Document not recognized as Aadhar. Please upload a clear photo of the FRONT side of your original Aadhar card." };
                  
@@ -701,6 +882,11 @@ if (!isset($_SESSION['user_id'])) {
         function closeRequestModal() {
             document.getElementById('requestModal').style.display = 'none';
             document.getElementById('modalMsg').innerHTML = ''; // Clear messages
+            // Reset payment steps
+            document.getElementById('paymentDoneStep').style.display = 'none';
+            document.getElementById('confirmButtons').style.display = 'flex';
+            document.querySelectorAll('#modalContent > .form-group, #modalContent > div').forEach(el => el.style.opacity = '');
+            pendingRequestId = null; pendingAmount = 0;
             // If URL has ride_id, clear it so reload works normally
             const url = new URL(window.location);
             if (url.searchParams.get('ride_id')) {
@@ -744,13 +930,12 @@ if (!isset($_SESSION['user_id'])) {
             if (!pickupInput.value.trim()) setError(pickupInput, "Pickup location cannot be empty.");
             if (!dropInput.value.trim()) setError(dropInput, "Dropoff location cannot be empty.");
 
-            // 2. ID Details Validation (Now handled automatically via OCR)
-            const idType = "Aadhar Card"; 
-            let idNumberClean = ""; // Will be filled after OCR
+            // 2. ID type label (driver will verify in person)
+            const idType = "Aadhar Card";
 
             // 3. File Validation
             if (proofInput.files.length === 0) {
-                 setError(proofInput, "Please upload your Government-certified Aadhar Card.");
+                 setError(proofInput, "Please upload your ID card before confirming.");
             } else {
                 const file = proofInput.files[0];
                 const validTypes = ['image/jpeg', 'image/png', 'application/pdf'];
@@ -765,35 +950,22 @@ if (!isset($_SESSION['user_id'])) {
                 msgBox.innerHTML = `<div class="error-banner" style="margin-bottom:1rem; padding: 1rem; background: #fee2e2; color: #991b1b; border-radius: 8px;"><i class="fas fa-exclamation-circle"></i> ${firstError}</div>`;
                 return;
             }
-            
-            // Proceed with OCR
+
+            // Skip OCR — driver verifies the card in person. Just upload the file directly.
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
 
             try {
-                // Perform OCR Check (Auto-extracts number)
-                const ocrResult = await verifyDocumentContent(proofInput.files[0], idType);
-                
-                if (!ocrResult.valid) {
-                    msgBox.innerHTML = `<div class="error-banner" style="margin-bottom:1rem; padding: 1rem; background: #fee2e2; color: #991b1b; border-radius: 8px;"><b>Verification Failed:</b> ${ocrResult.reason}</div>`;
-                    btn.disabled = false;
-                    btn.innerHTML = 'Confirm Request';
-                    return;
-                }
-                
-                idNumberClean = ocrResult.id_number; // Set the extracted number
-                btn.innerHTML = 'Sending...';
-
                 const formData = new FormData();
                 formData.append('action', 'create');
                 formData.append('ride_id', currentRideId);
                 formData.append('seats_requested', seatsInput.value);
                 formData.append('id_type', idType);
-                formData.append('id_number', idNumberClean); // Send CLEAN number to server
+                formData.append('id_number', ''); // Driver extracts ID manually
                 formData.append('pickup_loc', pickupInput.value.trim());
                 formData.append('drop_loc', dropInput.value.trim());
                 formData.append('final_price', calculatedPrice.toFixed(2));
-                
+
                 if (proofInput.files.length > 0) {
                     formData.append('proof_image', proofInput.files[0]);
                 }
@@ -802,21 +974,40 @@ if (!isset($_SESSION['user_id'])) {
                     method: 'POST',
                     body: formData
                 });
-                const result = await response.json();
 
-                if (result.success) {
-                    msgBox.innerHTML = '<div class="success-message" style="margin-bottom:1rem; padding: 1rem; background: #d1fae5; color: #065f46; border-radius: 8px;"><i class="fas fa-check"></i> Request Sent! Waiting for driver approval.</div>';
-                    setTimeout(() => {
-                        window.location.href = 'dashboard.php';
-                    }, 1500);
+                // Read raw text first so we can debug bad responses
+                const rawText = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(rawText);
+                } catch (parseErr) {
+                    console.error('Non-JSON response from server:', rawText);
+                    throw new Error('Server returned an unexpected response. Check server logs.');
+                }
+
+                if (result.success || result.already_requested) {
+                    pendingRequestId = result.request_id;
+                    pendingAmount    = parseFloat(result.amount) || calculatedPrice;
+
+                    const pMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+                    if (pMethod.startsWith('razorpay')) {
+                        const methodType = pMethod === 'razorpay_upi' ? 'upi' : 'card';
+                        triggerRazorpay(methodType);
+                    } else {
+                        if (result.already_requested) {
+                            showPaymentResult('warning', 'Already Requested', 'You have already requested this ride. You can manage it from your dashboard.');
+                        } else {
+                            showPaymentResult('success', 'Request Sent! 🎉', 'Your request has been sent. You can pay from your dashboard later.');
+                        }
+                    }
                 } else {
                     msgBox.innerHTML = `<div class="error-banner" style="margin-bottom:1rem; padding: 1rem; background: #fee2e2; color: #991b1b; border-radius: 8px;">${result.message}</div>`;
                     btn.disabled = false;
                     btn.innerHTML = 'Confirm Request';
                 }
             } catch (error) {
-                console.error(error);
-                msgBox.innerHTML = `<div class="error-banner" style="margin-bottom:1rem; padding: 1rem; background: #fee2e2; color: #991b1b; border-radius: 8px;">Server Error. Please try again.</div>`;
+                console.error('Submit error:', error);
+                msgBox.innerHTML = `<div class="error-banner" style="margin-bottom:1rem; padding: 1rem; background: #fee2e2; color: #991b1b; border-radius: 8px;">Error: ${error.message}</div>`;
                 btn.disabled = false;
                 btn.innerHTML = 'Confirm Request';
             }
@@ -827,6 +1018,111 @@ if (!isset($_SESSION['user_id'])) {
             const modal = document.getElementById('requestModal');
             if (event.target == modal) {
                 closeRequestModal();
+            }
+        }
+
+        // ─── Razorpay: called from Pay Now button ────────────────────────────
+        let pendingRequestId = null;
+        let pendingAmount    = 0;
+
+        async function triggerRazorpay(preferredMethod = '') {
+            if (!pendingRequestId) return;
+
+            const btn = document.getElementById('btnConfirm');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Opening Payment...';
+
+            try {
+                // Create Razorpay order
+                const res = await fetch('api_payment.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'create_order', request_id: pendingRequestId })
+                });
+                const order = await res.json();
+
+                if (!order.success) {
+                    showPaymentResult('error', 'Payment Failed', `Payment initialization failed (${order.message}). Your ride request was still sent. You can try paying later from the dashboard.`);
+                    return;
+                }
+
+                const options = {
+                    key:         order.key_id,
+                    amount:      order.amount,
+                    currency:    order.currency,
+                    name:        'ShareMyRide',
+                    description: order.description,
+                    order_id:    order.order_id,
+                    prefill: {
+                        name:  order.name,
+                        email: '<?php echo addslashes($_SESSION["email"] ?? ""); ?>',
+                        contact: '<?php echo addslashes($_SESSION["phone"] ?? "9999999999"); ?>'
+                    },
+                    remember_customer: true, // Help Razorpay remember customer details
+                    theme: { color: '#4f46e5' },
+                    handler: async function(response) {
+                        // Verify on server
+                        const vRes = await fetch('api_payment.php', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                action:              'verify_payment',
+                                razorpay_order_id:   response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature:  response.razorpay_signature,
+                                request_id:          pendingRequestId
+                            })
+                        });
+                        const vData = await vRes.json();
+
+                        if (!vData.success) {
+                            showPaymentResult('warning', 'Payment Unverified', 'Payment was received but verification failed. Contact support with ID: ' + response.razorpay_payment_id);
+                        } else {
+                            showPaymentResult('success', 'Payment Successful! 🎉', 'Your booking is confirmed! Payment ID: ' + response.razorpay_payment_id);
+                        }
+                    },
+                    modal: {
+                        ondismiss: function() {
+                            // User closed without paying — request is created, so just show success but unpaid
+                            showPaymentResult('warning', 'Payment Cancelled', 'Payment cancelled. Your request was still sent, you can pay from the dashboard later.');
+                        }
+                    }
+                };
+
+                if (!options.prefill.contact) {
+                    options.prefill.contact = '9999999999'; // Fallback
+                }
+
+                // Temporary aggressive block for Test Keys to bypass Razorpay's internal UPI block dropping without KYC
+                // Add customer_id to facilitate card saving (Razorpay recommends this)
+                options.customer_id = 'cust_<?php echo $_SESSION["user_id"]; ?>'; 
+                
+                if (preferredMethod === 'card') {
+                    options.config = {
+                        display: {
+                            blocks: {
+                                card: {
+                                    name: "Pay via Card",
+                                    instruments: [
+                                        { method: "card" },
+                                        { method: "netbanking" }
+                                    ]
+                                }
+                            },
+                            sequence: ["block.card"],
+                            preferences: { show_default_blocks: false }
+                        }
+                    };
+                }
+
+                const rzp = new Razorpay(options);
+
+                rzp.open();
+
+            } catch(e) {
+                console.error('Razorpay error:', e);
+                const cause = (typeof window.Razorpay === 'undefined') ? 'Razorpay script was blocked or failed to load. Please disable adblockers.' : (e.message || e);
+                showPaymentResult('error', 'Payment Error', `Network error starting payment: ${cause}. Your ride request was still sent. You can try paying later from the dashboard.`);
             }
         }
     </script>
