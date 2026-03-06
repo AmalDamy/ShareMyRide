@@ -738,3 +738,9 @@ User Info: sharemyride17@gmail.com, ShareMyRide, 109258318570260008343
 Step 5: Starting DB checks
 Rows found via Google ID: 1
 Login Success: sharemyride17@gmail.com
+Callback hit at 2026-03-06 11:35:25
+Credential received
+User Info: alwinvarghese2028@mca.ajce.in, ALWIN VARGHESE INT MCA 2023-2028, 117868528998152118832
+Step 5: Starting DB checks
+Rows found via Google ID: 1
+Login Success: alwinvarghese2028@mca.ajce.in
