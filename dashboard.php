@@ -412,9 +412,11 @@ $co2Saved = $ridesTaken * 2.5;
                              } else if (req.status === 'accepted') {
                                 // Show Pay Now if unpaid, Paid badge if already paid
                                 const payBtn = !isPaid
-                                    ? `<div style="display:flex; gap: 8px; justify-content: flex-end; margin-bottom: 10px; margin-top: 5px;">
-                                            <button onclick="startPayment(${req.request_id}, 'upi')" class="btn-pay-modern upi"><i class="fas fa-qrcode"></i> Pay UPI</button>
-                                            <button onclick="startPayment(${req.request_id}, 'card')" class="btn-pay-modern card"><i class="fas fa-credit-card"></i> Card/Others</button>
+                                    ? `<div style="display:flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-bottom: 10px; margin-top: 5px;">
+                                            <button onclick="startPayment(${req.request_id})" class="btn-pay-modern" style="background: linear-gradient(135deg, #0d9488, #0f766e); color: white;" title="Pay Now"><i class="fas fa-credit-card"></i> Pay Now</button>
+                                       </div>
+                                       <div style="text-align:right; margin-top: 2px;">
+                                         <span style="font-size:0.75rem; color:#6b7280;"><i class="fas fa-info-circle"></i> Your ride is confirmed. You can pay anytime.</span>
                                        </div>`
                                     : `<span class="trip-badge" style="background:#f0fdf4; color:#166534; font-weight:600; padding:6px 12px; border-radius:10px;"><i class="fas fa-check-circle"></i> Paid</span>`;
 
@@ -809,7 +811,8 @@ $co2Saved = $ridesTaken * 2.5;
         }
 
         // ─── Razorpay Payment ────────────────────────────────────────────────
-        async function startPayment(requestId, preferredMethod = '') {
+
+        async function startPayment(requestId) {
             try {
                 // Step 1: Create Razorpay order on server
                 const res = await fetch('api_payment.php', {
@@ -835,9 +838,6 @@ $co2Saved = $ridesTaken * 2.5;
                     name:        'ShareMyRide',
                     description: order.description,
                     order_id:    order.order_id,
-                    // Pass real Razorpay Customer ID so saved cards work
-                    customer_id: order.razorpay_customer_id || undefined,
-                    save:        order.razorpay_customer_id ? 1 : 0,
                     prefill: {
                         name:    order.name,
                         email:   '<?php echo addslashes($_SESSION["email"] ?? ""); ?>',

@@ -5,6 +5,39 @@ if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
+
+$passenger_id = $_SESSION['user_id'];
+$request_id = intval($_GET['request_id'] ?? 0);
+
+if (!$request_id) {
+    header("Location: dashboard.php");
+    exit;
+}
+
+// Fetch ride info for this request
+$q = $conn->prepare("
+    SELECT rq.ride_id, rq.status, r.from_location, r.to_location, r.ride_date,
+           u.name as driver_name, rq.passenger_id
+    FROM ride_requests rq
+    JOIN rides r ON rq.ride_id = r.ride_id
+    JOIN users u ON r.driver_id = u.user_id
+    WHERE rq.request_id = ? AND rq.passenger_id = ?
+");
+$q->bind_param("ii", $request_id, $passenger_id);
+$q->execute();
+$info = $q->get_result()->fetch_assoc();
+
+if (!$info) {
+    header("Location: dashboard.php");
+    exit;
+}
+
+// Check if already rated
+$alreadyRated = $conn->query("SELECT id FROM reviews WHERE ride_id = {$info['ride_id']} AND reviewer_id = $passenger_id")->num_rows > 0;
+if ($alreadyRated) {
+    header("Location: dashboard.php?msg=already_rated");
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -50,12 +83,14 @@ if (!isset($_SESSION['user_id'])) {
                 <i class="fas fa-check"></i>
             </div>
             
-            <h1 style="color: var(--text-dark); margin-bottom: 0.5rem;">Ride Completed!</h1>
-            <p style="color: var(--text-gray);">You have arrived at your destination.</p>
+            <h1 style="color: var(--text-dark); margin-bottom: 0.5rem;">Ride Completed! 🎉</h1>
+            <p style="color: var(--text-gray);"><?php echo htmlspecialchars($info['from_location']); ?> → <?php echo htmlspecialchars($info['to_location']); ?></p>
+            <p style="color: var(--text-gray); font-size:0.9rem;">on <?php echo htmlspecialchars($info['ride_date']); ?></p>
             
             <hr style="border: 0; border-top: 1px solid #eee; margin: 2rem 0;">
             
-            <h3 style="margin-bottom: 1rem;">How was your ride?</h3>
+            <h3 style="margin-bottom: 0.5rem;">How was your ride with</h3>
+            <p style="font-weight: 700; color: var(--dark-teal); font-size: 1.1rem; margin-bottom: 1.5rem;"><?php echo htmlspecialchars($info['driver_name']); ?>?</p>
             
             <form id="ratingForm" onsubmit="submitRating(event)">
                 <div class="star-rating">
@@ -67,13 +102,13 @@ if (!isset($_SESSION['user_id'])) {
                 </div>
                 
                 <div class="form-group" style="margin-bottom: 1.5rem;">
-                    <textarea class="form-input" id="comment" rows="3" placeholder="Write a short review (optional)..."></textarea>
+                    <textarea class="form-input" id="comment" rows="3" placeholder="Write a short review about your experience..."></textarea>
                 </div>
                 
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Feedback</button>
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.9rem; font-size: 1rem;"><i class="fas fa-paper-plane"></i> Submit Rating</button>
             </form>
             
-            <a href="dashboard.php" style="display: block; margin-top: 1.5rem; color: var(--text-gray); font-size: 0.9rem;">Skip Feedback</a>
+            <a href="dashboard.php" style="display: block; margin-top: 1.5rem; color: var(--text-gray); font-size: 0.9rem;">Skip for now</a>
         </div>
 
     </div>
@@ -81,51 +116,53 @@ if (!isset($_SESSION['user_id'])) {
     <!-- Scripts -->
     <script src="js/ride_manager.js"></script>
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const rideId = urlParams.get('ride_id');
-        const requestId = urlParams.get('request_id');
+        // Passed from PHP
+        const rideId    = '<?php echo $info['ride_id']; ?>';
+        const requestId = '<?php echo $request_id; ?>';
 
         async function submitRating(e) {
             e.preventDefault();
             
             const rating = document.querySelector('input[name="rating"]:checked');
             if(!rating) {
-                await RideManager.showAlert('Rating Required', "Please select a star rating!", 'error');
+                await RideManager.showAlert('Rating Required', 'Please click on one of the stars to rate the driver!', 'error');
                 return;
             }
             
             const comment = document.getElementById('comment').value;
-            const val = rating.value;
+            const val = parseInt(rating.value);
 
-            const btn = e.target.querySelector('button');
-            btn.innerHTML = 'Submitting...';
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
             btn.disabled = true;
 
             try {
-                // api_reviews.php to be created
                 const response = await fetch('api_reviews.php', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        ride_id: rideId,
+                        ride_id:    rideId,
                         request_id: requestId,
-                        rating: val,
-                        comment: comment
+                        rating:     val,
+                        comment:    comment
                     })
                 });
                 
                 const res = await response.json();
                 
                 if(res.success) {
-                    await RideManager.showAlert('Review Submitted', 'Thank you for your feedback!', 'success');
+                    await RideManager.showAlert('Thank You! ⭐', 'Your rating has been submitted. The driver\'s rating has been updated!', 'success');
                     window.location.href = 'dashboard.php';
                 } else {
-                    await RideManager.showAlert('Submission Error', res.message, 'error');
+                    await RideManager.showAlert('Error', res.message, 'error');
                     btn.disabled = false;
-                    btn.innerHTML = 'Submit Feedback';
+                    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Rating';
                 }
-            } catch(e) {
-                console.error(e);
+            } catch(err) {
+                console.error(err);
+                await RideManager.showAlert('Error', 'Something went wrong. Please try again.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Rating';
             }
         }
     </script>

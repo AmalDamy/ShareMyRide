@@ -1060,8 +1060,7 @@ if (!isset($_SESSION['user_id'])) {
 
                     const pMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
                     if (pMethod.startsWith('razorpay')) {
-                        const methodType = pMethod === 'razorpay_upi' ? 'upi' : 'card';
-                        triggerRazorpay(methodType);
+                        triggerRazorpay();
                     } else {
                         if (result.already_requested) {
                             showPaymentResult('warning', 'Already Requested', 'You have already requested this ride. You can manage it from your dashboard.');
@@ -1094,7 +1093,7 @@ if (!isset($_SESSION['user_id'])) {
         let pendingRequestId = null;
         let pendingAmount    = 0;
 
-        async function triggerRazorpay(preferredMethod = '') {
+        async function triggerRazorpay() {
             if (!pendingRequestId) return;
 
             const btn = document.getElementById('btnConfirm');
@@ -1122,16 +1121,14 @@ if (!isset($_SESSION['user_id'])) {
                     amount:      order.amount,
                     currency:    order.currency,
                     name:        'ShareMyRide',
-                    description: "TEST MODE: Use OTP 123456",
+                    description: order.description || 'Ride Payment',
                     order_id:    order.order_id,
-                    // Enable card saving (linked to phone via Customer ID)
                     customer_id: order.razorpay_customer_id || undefined,
-                    remember_customer: true, // Explicitly enable remember me
-                    save:        1, 
+                    remember_customer: true,
                     prefill: {
                         name:    order.name,
                         email:   '<?php echo addslashes($_SESSION["email"] ?? ""); ?>',
-                        contact: order.phone || '9999999999'
+                        contact: order.phone || '<?php echo addslashes(preg_replace("/[^0-9]/", "", $_SESSION["phone"] ?? "9999999999")); ?>'
                     },
                     theme: { color: '#0f766e' },
                     handler: async function(response) {
