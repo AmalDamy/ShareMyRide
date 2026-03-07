@@ -153,7 +153,11 @@ if (!$rideId) {
                     document.getElementById('offerDate').value = ride.ride_date;
                     document.getElementById('offerTime').value = ride.ride_time.substring(0,5); // Trim seconds
                     document.getElementById('vehicleType').value = ride.vehicle_type;
+                    
+                    // Trigger seat logic to populate dropdown before setting value
+                    updateSeats(ride.vehicle_type);
                     document.getElementById('offerSeats').value = ride.seats_available;
+                    
                     document.getElementById('offerPrice').value = ride.price_per_seat;
                     document.getElementById('offerDetails').value = ride.details;
                     
@@ -167,6 +171,34 @@ if (!$rideId) {
                 loader.innerHTML = '<p class="text-error">Error loading ride details.</p>';
             }
         });
+
+        // Vehicle -> Seat Logic
+        const vehicleSelect = document.getElementById('vehicleType');
+        const seatsSelect = document.getElementById('offerSeats');
+
+        function updateSeats(type) {
+            if (!seatsSelect) return;
+            let maxSeats = 4; // Default Car
+            if (type === 'bike') maxSeats = 1;
+            else if (type === 'suv') maxSeats = 6;
+            else if (type === 'car') maxSeats = 4;
+            
+            const currentVal = seatsSelect.value;
+            seatsSelect.innerHTML = '<option value="">Select</option>';
+            for (let i = 1; i <= maxSeats; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.text = i;
+                seatsSelect.appendChild(option);
+            }
+            if (currentVal && parseInt(currentVal) <= maxSeats) {
+                seatsSelect.value = currentVal;
+            }
+        }
+
+        if (vehicleSelect) {
+            vehicleSelect.addEventListener('change', (e) => updateSeats(e.target.value));
+        }
 
         // Helper to show inline error
         function showError(fieldId, errorId, message) {

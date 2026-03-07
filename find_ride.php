@@ -924,6 +924,36 @@ if (!isset($_SESSION['user_id'])) {
                     // Init Price
                     recalcPrice();
 
+                    // Dynamically populate seat selection
+                    const seatsSelect = document.getElementById('mSeats');
+                    seatsSelect.innerHTML = '';
+                    
+                    let maxSelectable = parseInt(currentRide.seats_available) || 1;
+                    
+                    // Physical limits per vehicle type (Safety check)
+                    const vType = currentRide.vehicle_type.toLowerCase();
+                    if (vType === 'bike') maxSelectable = Math.min(maxSelectable, 1);
+                    else if (vType === 'car') maxSelectable = Math.min(maxSelectable, 4);
+                    else if (vType === 'suv') maxSelectable = Math.min(maxSelectable, 6);
+                    
+                    // Populate dropdown
+                    for (let i = 1; i <= maxSelectable; i++) {
+                        const opt = document.createElement('option');
+                        opt.value = i;
+                        opt.text = i + (i === 1 ? ' Seat' : ' Seats');
+                        seatsSelect.appendChild(opt);
+                    }
+                    
+                    if (maxSelectable === 0) {
+                        const opt = document.createElement('option');
+                        opt.value = 0;
+                        opt.text = 'No seats available';
+                        seatsSelect.appendChild(opt);
+                        seatsSelect.disabled = true;
+                    } else {
+                        seatsSelect.disabled = false;
+                    }
+
                     loading.style.display = 'none';
                     content.style.display = 'block';
                 } else {

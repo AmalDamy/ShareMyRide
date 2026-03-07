@@ -424,11 +424,29 @@ $co2Saved = $ridesTaken * 2.5;
                                     <div style="margin-top:5px; display:flex; flex-direction:column; align-items:flex-end; gap:5px;">
                                         <a href="ride_details.php?id=${req.ride_id}" style="font-size:0.85rem; color:var(--primary-teal); font-weight:600; margin-bottom: 5px; text-decoration: underline;">Track Ride</a>
                                         ${payBtn}
-                                        <button onclick="confirmArrival(${req.request_id})" class="btn btn-outline" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-radius: 10px; border-color: var(--primary-teal); color: var(--primary-teal);">
-                                            <i class="fas fa-check-circle"></i> End Trip & Rate
-                                        </button>
+                                        <div style="display:flex; gap:5px;">
+                                            <button onclick="cancelBooking(${req.request_id})" class="btn btn-outline" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-radius: 10px; border-color: var(--error-red); color: var(--error-red);">
+                                                Cancel
+                                            </button>
+                                            <button onclick="confirmArrival(${req.request_id})" class="btn btn-outline" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-radius: 10px; border-color: var(--primary-teal); color: var(--primary-teal);">
+                                                <i class="fas fa-check-circle"></i> End Trip & Rate
+                                            </button>
+                                        </div>
                                     </div>
                                 `;
+                             } else if (req.status === 'pending') {
+                                 const payBtn = !isPaid
+                                     ? `<button onclick="startPayment(${req.request_id})" class="btn-pay-modern" style="background: linear-gradient(135deg, #0d9488, #0f766e); color: white; padding: 0.5rem 1rem; font-size: 0.85rem; border-radius: 10px; border: none; cursor: pointer; display: flex; align-items: center; gap: 5px;" title="Pay Now"><i class="fas fa-credit-card"></i> Pay Now</button>`
+                                     : `<span class="trip-badge" style="background:#f0fdf4; color:#166534; font-weight:600; padding:4px 10px; border-radius:10px; font-size:0.8rem;"><i class="fas fa-check-circle"></i> Paid</span>`;
+
+                                 actionButtons = `
+                                    <div style="margin-top:10px; display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+                                        ${payBtn}
+                                        <button onclick="cancelBooking(${req.request_id})" class="btn btn-outline" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-color: var(--error-red); color: var(--error-red); border-radius: 10px; border-style: solid; border-width: 1px; background: transparent; cursor: pointer;">
+                                            Cancel Request
+                                        </button>
+                                    </div>
+                                 `;
                              }
                         }
 
@@ -647,6 +665,25 @@ $co2Saved = $ridesTaken * 2.5;
                 if(data.success) {
                     // Redirect directly to rating
                     window.location.href = `rate_ride.php?request_id=${reqId}`;
+                } else {
+                    await RideManager.showAlert('Error', data.message, 'error');
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function cancelBooking(reqId) {
+            const confirmed = await RideManager.showConfirm("Cancel Booking?", "Are you sure you want to cancel your ride request? This cannot be undone.");
+            if(!confirmed) return;
+            try {
+                const res = await fetch('api_requests.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ action: 'cancel_passenger', request_id: reqId })
+                });
+                const data = await res.json();
+                if(data.success) {
+                    await RideManager.showAlert('Cancelled', data.message, 'success');
+                    loadMyBookings();
                 } else {
                     await RideManager.showAlert('Error', data.message, 'error');
                 }

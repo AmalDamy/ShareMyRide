@@ -744,3 +744,12 @@ User Info: alwinvarghese2028@mca.ajce.in, ALWIN VARGHESE INT MCA 2023-2028, 1178
 Step 5: Starting DB checks
 Rows found via Google ID: 1
 Login Success: alwinvarghese2028@mca.ajce.in
+Callback hit at 2026-03-07 07:19:22
+Credential received
+User Info: damiamal27@gmail.com, Amal Dami, 113747184800709787573
+Step 5: Starting DB checks
+Rows found via Google ID: 0
+Checking by email: damiamal27@gmail.com
+Rows found via Email: 0
+Creating new user
+Login Success: damiamal27@gmail.com

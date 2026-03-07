@@ -245,6 +245,27 @@ if ($method === 'POST') {
             if ($current_status === 'accepted') {
                 $conn->query("UPDATE rides SET seats_available = seats_available + $seats WHERE ride_id = $ride_id");
             }
+
+            // Notify Driver
+            $getDriver = $conn->query("SELECT r.driver_id, r.to_location, u.name as passenger_name 
+                                    FROM rides r 
+                                    JOIN users u ON u.user_id = $passenger_id 
+                                    WHERE r.ride_id = $ride_id");
+            if ($getDriver && $getDriver->num_rows > 0) {
+                $dRow = $getDriver->fetch_assoc();
+                $driver_id = $dRow['driver_id'];
+                $pass_name = $dRow['passenger_name'];
+                $dest = $dRow['to_location'];
+                
+                $title = "Request Cancelled";
+                $msg = "$pass_name cancelled their request for ride to $dest";
+                $type = 'warning';
+                $link = 'dashboard.php#incoming';
+                
+                $nStmt = $conn->prepare("INSERT INTO notifications (user_id, title, message, type, link) VALUES (?, ?, ?, ?, ?)");
+                $nStmt->bind_param("issss", $driver_id, $title, $msg, $type, $link);
+                $nStmt->execute();
+            }
             
             $conn->commit();
             echo JSON_encode(['success' => true, 'message' => 'Request cancelled successfully']);
