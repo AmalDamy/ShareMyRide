@@ -98,8 +98,9 @@ if ($method === 'GET') {
         }
     }
 
-    // Exclude my own rides if I'm not explicitly looking for them
-    if (!$is_fetching_mine && isset($_SESSION['user_id'])) {
+    // Exclude my own rides unless 'show_self' is requested
+    $show_self = $_GET['show_self'] ?? '0';
+    if (!$is_fetching_mine && isset($_SESSION['user_id']) && $show_self !== '1') {
         $sql .= " AND r.driver_id != ?";
         $params[] = $_SESSION['user_id'];
         $types .= "i";

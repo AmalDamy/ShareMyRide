@@ -57,6 +57,9 @@ if (!isset($_SESSION['user_id'])) {
                     <label>Date</label>
                     <input type="date" name="date" id="searchDate" class="form-input" value="<?php echo isset($_GET['date']) ? htmlspecialchars($_GET['date']) : ''; ?>">
                 </div>
+                <?php if (isset($_GET['show_self'])): ?>
+                <input type="hidden" name="show_self" value="<?php echo htmlspecialchars($_GET['show_self']); ?>">
+                <?php endif; ?>
                 <div class="search-btn-wrapper">
                     <button type="submit" class="btn btn-primary">Update Search</button>
                 </div>
@@ -772,6 +775,10 @@ if (!isset($_SESSION['user_id'])) {
             if(filterFrom) filters.from = filterFrom;
             if(filterTo) filters.to = filterTo;
             if(filterDate) filters.date = filterDate;
+            
+            // Pass through show_self if present in URL (useful for testing)
+            const urlParams = new URLSearchParams(window.location.search);
+            if(urlParams.get('show_self')) filters.show_self = urlParams.get('show_self');
 
             const rides = await RideManager.getAllRides(filters);
 
