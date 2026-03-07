@@ -7,44 +7,45 @@ $data = json_decode(file_get_contents('php://input'), true);
 $token = $data['token'] ?? '';
 $password = $data['password'] ?? '';
 
-if (!$token || !$password) {
-    echo json_encode(['success' => false, 'message' => 'Missing token or password.']);
+if (empty($token) || empty($password)) {
+    echo json_encode(['success' => false, 'message' => 'Missing data.']);
     exit;
 }
 
-// 1. Validate Token
-$stmt = $conn->prepare("SELECT email, expires_at FROM password_resets WHERE token = ?");
-$stmt->bind_param("s", $token);
+if (strlen($password) < 6) {
+    echo json_encode(['success' => false, 'message' => 'Password must be at least 6 characters long.']);
+    exit;
+}
+
+// 1. Verify token
+$stmt = $conn->prepare("SELECT email FROM password_resets WHERE token = ? AND expires_at > ?");
+$now = time();
+$stmt->bind_param("si", $token, $now);
 $stmt->execute();
-$result = $stmt->get_result();
+$res = $stmt->get_result();
 
-if ($result->num_rows === 0) {
-    echo json_encode(['success' => false, 'message' => 'Invalid or used reset token.']);
+if ($res->num_rows === 0) {
+    echo json_encode(['success' => false, 'message' => 'Invalid or expired token.']);
     exit;
 }
 
-$resetRequest = $result->fetch_assoc();
-if (time() > $resetRequest['expires_at']) {
-    echo json_encode(['success' => false, 'message' => 'Token has expired.']);
-    exit;
-}
+$row = $res->fetch_assoc();
+$email = $row['email'];
 
-$email = $resetRequest['email'];
+// 2. Hash new password
+$hashed = password_hash($password, PASSWORD_DEFAULT);
 
-// 2. Update Password
-$hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-$update = $conn->prepare("UPDATE users SET password = ? WHERE email = ?");
-$update->bind_param("ss", $hashedPassword, $email);
+// 3. Update User Password
+$upd = $conn->prepare("UPDATE users SET password = ? WHERE email = ?");
+$upd->bind_param("ss", $hashed, $email);
 
-if ($update->execute()) {
-    // 3. Delete Token
-    $del = $conn->prepare("DELETE FROM password_resets WHERE email = ?");
-    $del->bind_param("s", $email);
-    $del->execute();
+if ($upd->execute()) {
+    // 4. Delete token
+    $conn->query("DELETE FROM password_resets WHERE email = '$email'");
     
-    echo json_encode(['success' => true, 'message' => 'Password updated successfully.']);
+    echo json_encode(['success' => true, 'message' => 'Password updated successfully! Redirecting to login...']);
 } else {
-    echo json_encode(['success' => false, 'message' => 'Failed to update password.']);
+    echo json_encode(['success' => false, 'message' => 'Database error: ' . $conn->error]);
 }
 
 $conn->close();

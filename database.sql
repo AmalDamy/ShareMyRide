@@ -80,6 +80,15 @@ CREATE TABLE IF NOT EXISTS reviews (
     FOREIGN KEY (reviewee_id) REFERENCES users(user_id)
 );
 
+-- Password Resets
+CREATE TABLE IF NOT EXISTS password_resets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(100) NOT NULL,
+    token VARCHAR(255) NOT NULL,
+    expires_at INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Mock Data for Testing
 INSERT INTO users (name, email, password, role, is_verified) VALUES 
 ('Admin', 'admin@sharemyride.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', TRUE), -- password: password

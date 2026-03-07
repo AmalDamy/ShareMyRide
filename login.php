@@ -348,7 +348,7 @@ if (isset($_SESSION['user_id'])) {
 
                 <input type="email" id="loginEmail" placeholder="Email" required autocomplete="off" />
                 <input type="password" id="loginPass" placeholder="Password" required autocomplete="new-password" />
-                <a href="#" style="font-size: 0.8rem; margin: 10px 0;">Forgot your password?</a>
+                <a href="forgot_password.php" style="font-size: 0.8rem; margin: 10px 0;">Forgot your password?</a>
                 
                 <button type="submit">Sign In</button>
 
