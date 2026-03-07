@@ -11,8 +11,21 @@ if ($method === 'GET') {
     $to = $_GET['to'] ?? '';
     $date = $_GET['date'] ?? '';
     $type = $_GET['type'] ?? ''; // Default to ALL types (empty)
-
     $status_filter = $_GET['status'] ?? 'active';
+
+    // AUTO-CLEANUP: Mark past rides as completed
+    $now_date = date('Y-m-d');
+    $now_time = date('H:i:s');
+    
+    // Update rides that are past their scheduled time
+    $conn->query("UPDATE rides SET status = 'completed' 
+                 WHERE status = 'active' 
+                 AND (ride_date < '$now_date' OR (ride_date = '$now_date' AND ride_time < '$now_time'))");
+    
+    // Also mark accepted requests for those rides as completed
+    $conn->query("UPDATE ride_requests SET status = 'completed' 
+                 WHERE status = 'accepted' 
+                 AND ride_id IN (SELECT ride_id FROM rides WHERE status = 'completed')");
 
     $sql = "SELECT r.*, u.name as driver_name, u.rating, u.profile_pic 
             FROM rides r 
@@ -90,6 +103,11 @@ if ($method === 'GET') {
         $sql .= " AND r.driver_id != ?";
         $params[] = $_SESSION['user_id'];
         $types .= "i";
+    }
+
+    // HIDE FULL RIDES: If not fetching my own rides or a specific ID, hide those with 0 seats
+    if (!$is_fetching_mine && empty($ride_id)) {
+        $sql .= " AND r.seats_available > 0";
     }
     
     // Check for specific ride_id (Bypass type filter if ID provided)
