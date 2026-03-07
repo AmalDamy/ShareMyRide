@@ -358,6 +358,11 @@ if (!isset($_SESSION['user_id'])) {
             }
         }
 
+        // Disable past dates
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        if(document.getElementById('startDate')) document.getElementById('startDate').min = todayStr;
+        if(document.getElementById('endDate')) document.getElementById('endDate').min = todayStr;
+
         loadTrips();
     </script>
 </body>

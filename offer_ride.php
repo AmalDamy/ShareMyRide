@@ -129,8 +129,9 @@ if (!isset($_SESSION['user_id'])) {
             document.getElementById('navLinks').classList.toggle('show');
         }
 
-        // Set minimum date to today
-        document.getElementById('offerDate').min = new Date().toISOString().split('T')[0];
+        // Set minimum date to today (using local time)
+        const today = new Date().toLocaleDateString('en-CA');
+        document.getElementById('offerDate').min = today;
 
         // Helper to show inline error
         function showError(fieldId, errorId, message) {

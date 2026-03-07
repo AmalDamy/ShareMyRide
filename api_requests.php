@@ -206,6 +206,52 @@ if ($method === 'POST') {
         } else {
              echo JSON_encode(['success' => false, 'message' => 'Could not complete ride. Check if it is accepted.']);
         }
+    } elseif ($action === 'cancel_passenger') {
+        // Passenger cancelling their request
+        $request_id = $data['request_id'] ?? 0;
+        $passenger_id = $_SESSION['user_id'];
+        
+        // Get request details (including seats and current status)
+        $stmt = $conn->prepare("SELECT ride_id, seats_requested, status FROM ride_requests WHERE request_id = ? AND passenger_id = ?");
+        $stmt->bind_param("ii", $request_id, $passenger_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        
+        if ($res->num_rows === 0) {
+            echo JSON_encode(['success' => false, 'message' => 'Request not found']);
+            exit;
+        }
+        
+        $row = $res->fetch_assoc();
+        $ride_id = $row['ride_id'];
+        $seats = $row['seats_requested'];
+        $current_status = $row['status'];
+        
+        if ($current_status === 'cancelled' || $current_status === 'completed' || $current_status === 'rejected') {
+            echo JSON_encode(['success' => false, 'message' => 'Cannot cancel this request now']);
+            exit;
+        }
+        
+        // Start transaction
+        $conn->begin_transaction();
+        
+        try {
+            // Update status to cancelled
+            $upd = $conn->prepare("UPDATE ride_requests SET status = 'cancelled' WHERE request_id = ?");
+            $upd->bind_param("i", $request_id);
+            $upd->execute();
+            
+            // If it was accepted, we must give seats back to the driver
+            if ($current_status === 'accepted') {
+                $conn->query("UPDATE rides SET seats_available = seats_available + $seats WHERE ride_id = $ride_id");
+            }
+            
+            $conn->commit();
+            echo JSON_encode(['success' => true, 'message' => 'Request cancelled successfully']);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo JSON_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+        }
     }
 
 } elseif ($method === 'GET') {
@@ -239,7 +285,7 @@ if ($method === 'POST') {
         // Check if rated: JOIN with reviews table
         // We also fetch r.status as ride_status. If the ride is globally completed, the user should be able to rate.
         $sql = "SELECT rq.*, r.from_location, r.to_location, r.ride_date, r.ride_time, r.price_per_seat, r.status as ride_status,
-                       u.name as driver_name,
+                       u.name as driver_name, r.driver_id,
                        (SELECT COUNT(*) FROM reviews rev WHERE rev.ride_id = rq.ride_id AND rev.reviewer_id = rq.passenger_id) as has_rated,
                        (SELECT COUNT(*) FROM payments pay WHERE pay.request_id = rq.request_id AND pay.status = 'paid') as is_paid
                 FROM ride_requests rq 

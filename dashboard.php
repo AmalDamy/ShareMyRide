@@ -436,7 +436,7 @@ $co2Saved = $ridesTaken * 2.5;
                         <div class="trip-card" style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 1rem;">
                             <div>
                                  <h3 style="font-size: 1.1rem; color: var(--dark-teal);">${req.from_location} → ${req.to_location}</h3>
-                                 <p style="color: var(--text-gray); font-size: 0.9rem;">${req.ride_date} • Funding Driver: ${req.driver_name}</p>
+                                 <p style="color: var(--text-gray); font-size: 0.9rem;">${req.ride_date} • Driver: <a href="view_profile.php?id=${req.driver_id}" style="color: var(--primary-teal); font-weight: 600; text-decoration: none;">${req.driver_name}</a></p>
                                  ${debugInfo} 
                             </div>
                             <div style="text-align:right;">
@@ -744,7 +744,7 @@ $co2Saved = $ridesTaken * 2.5;
                                 ${profileImgHtml}
                                 <div>
                                     <div style="font-weight: 700; color:var(--text-dark); display: flex; align-items: center; gap: 0.5rem;">
-                                        ${req.passenger_name}
+                                        <a href="view_profile.php?id=${req.passenger_id}" style="color: inherit; text-decoration: none;">${req.passenger_name}</a>
                                         <span class="trip-badge" style="background: #f3f4f6; color: ${ratingColor}; font-size: 0.75rem; padding: 2px 6px;">
                                             <i class="fas fa-star" style="font-size: 0.7rem;"></i> ${rating}
                                         </span>

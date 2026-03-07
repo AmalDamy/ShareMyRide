@@ -254,6 +254,9 @@ if (!$rideId) {
                 btn.disabled = false;
             }
         }
+        // Disable past dates
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        if(document.getElementById('offerDate')) document.getElementById('offerDate').min = todayStr;
     </script>
 
 </body>

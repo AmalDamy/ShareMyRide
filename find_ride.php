@@ -825,7 +825,7 @@ if (!isset($_SESSION['user_id'])) {
                             <div style="display: flex; gap: 1.5rem; color: var(--text-gray); font-size: 0.95rem; align-items: center;">
                                 <span style="display: flex; align-items: center;">
                                     <i class="fas fa-user-circle" style="font-size: 1.2rem; margin-right: 0.5rem; color: var(--primary-teal);"></i> 
-                                    ${ride.driver_name} 
+                                    <a href="view_profile.php?id=${ride.driver_id}" style="text-decoration: none; color: var(--text-dark); font-weight: 700;">${ride.driver_name}</a>
                                     <span style="font-size: 0.8rem; color: var(--accent-yellow); margin-left: 0.5rem;"><i class="fas fa-star"></i> ${rating}</span>
                                 </span>
                                 <span style="display: flex; align-items: center;">
@@ -914,7 +914,7 @@ if (!isset($_SESSION['user_id'])) {
                     document.getElementById('mTo').textContent = currentRide.to_location;
                     document.getElementById('mTime').textContent = `${currentRide.ride_date} at ${currentRide.ride_time}`;
                     document.getElementById('mPrice').textContent = '₹' + parseFloat(currentRide.price_per_seat).toFixed(0);
-                    document.getElementById('mDriver').textContent = currentRide.driver_name;
+                    document.getElementById('mDriver').innerHTML = `<a href="view_profile.php?id=${currentRide.driver_id}" style="text-decoration: none; color: var(--text-dark);">${currentRide.driver_name}</a>`;
                     document.getElementById('mVehicle').textContent = currentRide.vehicle_type;
 
                     // Set defaults for custom fields
@@ -1183,6 +1183,9 @@ if (!isset($_SESSION['user_id'])) {
                 showPaymentResult('error', 'Payment Error', `Network error starting payment: ${cause}. Your ride request was still sent. You can try paying later from the dashboard.`);
             }
         }
+        // Disable past dates
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        if(document.getElementById('searchDate')) document.getElementById('searchDate').min = todayStr;
     </script>
 
 </body>

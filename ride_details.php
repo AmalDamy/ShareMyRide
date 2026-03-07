@@ -294,7 +294,7 @@ if (!isset($_SESSION['user_id'])) {
             document.getElementById('content').style.display = 'block';
 
             // Fill Data
-            document.getElementById('driverName').textContent = ride.driver_name;
+            document.getElementById('driverName').innerHTML = `<a href="view_profile.php?id=${ride.driver_id}" style="text-decoration: none; color: inherit;">${ride.driver_name}</a>`;
             document.getElementById('driverRating').textContent = ride.rating || '4.5';
             document.getElementById('carModel').textContent = ride.vehicle_type;
             document.getElementById('carPlate').textContent = ride.vehicle_number || 'KL-01-AB-1234';
