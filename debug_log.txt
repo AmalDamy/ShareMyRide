@@ -765,3 +765,9 @@ User Info: amaldamy2028@mca.ajce.in, AMAL DAMY, 114844317509602427057
 Step 5: Starting DB checks
 Rows found via Google ID: 1
 Login Success: amaldamy2028@mca.ajce.in
+Callback hit at 2026-03-08 20:33:58
+Credential received
+User Info: sharemyride17@gmail.com, ShareMyRide, 109258318570260008343
+Step 5: Starting DB checks
+Rows found via Google ID: 1
+Login Success: sharemyride17@gmail.com

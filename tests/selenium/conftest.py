@@ -7,7 +7,7 @@ from selenium.webdriver.chrome.options import Options
 @pytest.fixture(scope="session")
 def driver():
     chrome_options = Options()
-    # chrome_options.add_argument("--headless")  # Uncomment for headless mode
+    chrome_options.add_argument("--headless")  # Uncomment for headless mode
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
