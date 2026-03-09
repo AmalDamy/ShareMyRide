@@ -316,9 +316,9 @@ if (isset($_SESSION['user_id'])) {
                 
                 <div id="signup-alert" class="alert-box alert-error"></div>
 
-                <input type="text" id="signupName" placeholder="Name" required />
-                <input type="email" id="signupEmail" placeholder="Email" required />
-                <input type="password" id="signupPass" placeholder="Password" required />
+                <input type="text" id="signupName" placeholder="Name" oninput="validateSignupLive('signupName')" required />
+                <input type="email" id="signupEmail" placeholder="Email" oninput="validateSignupLive('signupEmail')" required />
+                <input type="password" id="signupPass" placeholder="Password" oninput="validateSignupLive('signupPass')" required />
                 
                 <button type="submit">Sign Up</button>
                 
@@ -346,8 +346,8 @@ if (isset($_SESSION['user_id'])) {
                 <input type="text" style="display:none">
                 <input type="password" style="display:none">
 
-                <input type="email" id="loginEmail" placeholder="Email" required autocomplete="off" />
-                <input type="password" id="loginPass" placeholder="Password" required autocomplete="new-password" />
+                <input type="email" id="loginEmail" placeholder="Email" oninput="validateLoginLive('loginEmail')" required autocomplete="off" />
+                <input type="password" id="loginPass" placeholder="Password" oninput="validateLoginLive('loginPass')" required autocomplete="new-password" />
                 <a href="forgot_password.php" style="font-size: 0.8rem; margin: 10px 0;">Forgot your password?</a>
                 
                 <button type="submit">Sign In</button>
@@ -408,12 +408,87 @@ if (isset($_SESSION['user_id'])) {
              document.querySelectorAll('.mobile-toggle').forEach(el => el.style.display = 'block');
         }
 
+        // LIVE VALIDATION HELPERS
+        function validateSignupLive(fieldId) {
+            const name = document.getElementById('signupName').value.trim();
+            const email = document.getElementById('signupEmail').value.trim();
+            const pass = document.getElementById('signupPass').value.trim();
+            const alertBox = document.getElementById('signup-alert');
+            
+            alertBox.style.display = 'none';
+            alertBox.classList.remove('alert-success');
+            alertBox.classList.add('alert-error');
+
+            if (fieldId === 'signupName' && name.length > 0) {
+                if (!/^[a-zA-Z\s\.\-']+$/.test(name)) {
+                    alertBox.innerText = "Name can only contain letters, spaces, dots, and hyphens";
+                    alertBox.style.display = 'block';
+                    return false;
+                }
+                if (name.length < 3) {
+                    alertBox.innerText = "Name must be at least 3 characters long";
+                    alertBox.style.display = 'block';
+                    return false;
+                }
+            }
+
+            if (fieldId === 'signupEmail' && email.length > 0) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    alertBox.innerText = "Please enter a valid email address";
+                    alertBox.style.display = 'block';
+                    return false;
+                }
+            }
+
+            if (fieldId === 'signupPass' && pass.length > 0) {
+                if (pass.length < 6) {
+                    alertBox.innerText = "Password must be at least 6 characters long";
+                    alertBox.style.display = 'block';
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function validateLoginLive(fieldId) {
+            const email = document.getElementById('loginEmail').value.trim();
+            const alertBox = document.getElementById('login-alert');
+            
+            alertBox.style.display = 'none';
+            alertBox.classList.remove('alert-success');
+            alertBox.classList.add('alert-error');
+
+            if (fieldId === 'loginEmail' && email.length > 0) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    alertBox.innerText = "Please enter a valid email address";
+                    alertBox.style.display = 'block';
+                    return false;
+                }
+            }
+            return true;
+        }
+
         // AUTH LOGIC (AUTHENTIC)
         async function handleAuth(e, action) {
             e.preventDefault();
             
             const form = e.target;
             const btn = form.querySelector('button[type="submit"]');
+            
+            // Final validation before submit
+            let isValid = true;
+            if (action === 'signup') {
+                isValid = validateSignupLive('signupName') && 
+                          validateSignupLive('signupEmail') && 
+                          validateSignupLive('signupPass');
+            } else {
+                isValid = validateLoginLive('loginEmail');
+            }
+
+            if (!isValid) return;
+
             const originalText = btn.innerText;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             btn.disabled = true;

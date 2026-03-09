@@ -27,7 +27,9 @@ if ($method === 'GET') {
                  WHERE status = 'accepted' 
                  AND ride_id IN (SELECT ride_id FROM rides WHERE status = 'completed')");
 
-    $sql = "SELECT r.*, u.name as driver_name, u.rating, u.profile_pic 
+    $current_user_id = $_SESSION['user_id'] ?? 0;
+    $sql = "SELECT r.*, u.name as driver_name, u.rating, u.profile_pic, 
+            (SELECT COUNT(*) FROM ride_requests WHERE ride_id = r.ride_id AND passenger_id = $current_user_id AND status != 'cancelled') as is_requested
             FROM rides r 
             JOIN users u ON r.driver_id = u.user_id 
             WHERE 1=1";
@@ -115,7 +117,8 @@ if ($method === 'GET') {
     $ride_id = $_GET['ride_id'] ?? '';
     if (!empty($ride_id)) {
         // Reset SQL for ID lookup to find ANY trip type
-        $sql = "SELECT r.*, u.name as driver_name, u.rating, u.profile_pic 
+        $sql = "SELECT r.*, u.name as driver_name, u.rating, u.profile_pic,
+                (SELECT COUNT(*) FROM ride_requests WHERE ride_id = r.ride_id AND passenger_id = $current_user_id AND status != 'cancelled') as is_requested
                 FROM rides r 
                 JOIN users u ON r.driver_id = u.user_id 
                 WHERE r.ride_id = ?";

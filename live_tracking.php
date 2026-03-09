@@ -124,7 +124,20 @@
             <div style="font-size: 0.9rem; color: #4b5563; margin-bottom: 0.5rem;">
                 <i class="fas fa-map-marker-alt" style="color: var(--primary-teal);"></i> <span id="ovFrom">Origin</span> <i class="fas fa-arrow-right"></i> <span id="ovTo">Dest</span>
             </div>
-            <div class="status-badge" style="background:#d1fae5; color:#065f46; padding:0.2rem 0.6rem; border-radius:4px; font-size:0.8rem; display:inline-block;">Live Now</div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem;">
+                <div class="status-badge" style="background:#d1fae5; color:#065f46; padding:0.2rem 0.6rem; border-radius:4px; font-size:0.8rem; display:inline-block;"><i class="fas fa-broadcast-tower fa-beat" style="margin-right:4px;"></i> Live Now</div>
+                <div id="ovEta" style="font-size: 0.8rem; font-weight: 600; color: #64748b;">ETA: --</div>
+            </div>
+            
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #e2e8f0;">
+                <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; margin-bottom: 0.3rem;">Current Location / Action</div>
+                <div id="ovStatus" style="font-size: 1rem; font-weight: 600; color: #1e293b; line-height: 1.3;"><i class="fas fa-spinner fa-spin"></i> Locating vehicle...</div>
+                
+                <!-- Progress bar -->
+                <div style="margin-top: 0.8rem; width: 100%; height: 6px; background: #e2e8f0; border-radius: 10px; overflow: hidden;">
+                    <div id="ovProgress" style="width: 0%; height: 100%; background: var(--primary-teal); transition: width 0.3s ease;"></div>
+                </div>
+            </div>
         </div>
 
     </div>
@@ -379,34 +392,85 @@
 
                 // Animate Car along the detailed path coordinates
                 const pathCoords = routes[0].coordinates; 
-                animateCarOnPath(pathCoords);
+                const instructions = routes[0].instructions;
+                const routeTimeMs = routes[0].summary && routes[0].summary.totalTime ? routes[0].summary.totalTime * 1000 : 150000;
+                animateCarOnPath(pathCoords, instructions, routeTimeMs);
             });
         }
 
-        function animateCarOnPath(coords) {
+        function animateCarOnPath(coords, instructions, totalDuration) {
             if (!coords || coords.length === 0) return;
             
-            // Create car at start if not exists (might have been created in fallback, remove it first)
             if(carMarker) map.removeLayer(carMarker);
             carMarker = L.marker(coords[0], {icon: carIcon, zIndexOffset: 1000}).addTo(map);
 
             let index = 0;
-            // Lower speed = smoother but slower. The points are dense so we can skip a few or just iterate fast.
-            // Let's iterate 1 point per frame.
+            let lastTime = null;
+            let currentInstructionIdx = 0;
             
-            function tick() {
-                if (!carMarker) return;
-                
-                index += 1; // Move to next coordinate point
-                if (index >= coords.length) index = 0; // Loop
+            // Time it should take to move between 1 point to the next (using realistic route time)
+            const timePerPoint = totalDuration / coords.length;
 
-                carMarker.setLatLng(coords[index]);
+            const statusEl = document.getElementById('ovStatus');
+            const progressEl = document.getElementById('ovProgress');
+            const etaEl = document.getElementById('ovEta');
+
+            function tick(timestamp) {
+                if (!carMarker) return;
+                if (!lastTime) lastTime = timestamp;
+
+                const deltaTime = timestamp - lastTime;
+
+                // Move forward if enough time has passed based on our calculated speed
+                if (deltaTime >= timePerPoint) {
+                    const pointsToMove = Math.floor(deltaTime / timePerPoint);
+                    index += pointsToMove;
+                    
+                    if (index >= coords.length) {
+                        index = 0; // Restart animation
+                        currentInstructionIdx = 0;
+                    }
+                    
+                    carMarker.setLatLng(coords[index]);
+
+                    // Update Progress bar & ETA
+                    const progressPercent = (index / coords.length) * 100;
+                    if(progressEl) progressEl.style.width = progressPercent + '%';
+                    
+                    if(etaEl) {
+                        const timeLeftMs = Math.max(0, totalDuration - (index * timePerPoint));
+                        const minsLeft = Math.ceil(timeLeftMs / 60000);
+                        if (minsLeft >= 60) {
+                            const hrs = Math.floor(minsLeft / 60);
+                            const mns = minsLeft % 60;
+                            etaEl.innerText = `ETA: ${hrs} hr ${mns} min`;
+                        } else {
+                            etaEl.innerText = `ETA: ${minsLeft} min${minsLeft === 1 ? '' : 's'}`;
+                        }
+                    }
+
+                    // Update Live Status based on current location/instruction mapping
+                    if (statusEl && instructions && instructions.length > 0) {
+                        // Advance instruction index if vehicle passed the waypoint
+                        while (currentInstructionIdx < instructions.length - 1 && index >= instructions[currentInstructionIdx + 1].index) {
+                            currentInstructionIdx++;
+                        }
+                        
+                        let text = instructions[currentInstructionIdx].text;
+                        if (text) {
+                            // Make it sound continuous
+                            if (text === 'Destination reached') text = 'Arriving at destination';
+                            statusEl.innerHTML = `<i class="fas fa-location-arrow" style="color:var(--primary-teal); margin-right:4px;"></i> ${text}`;
+                        }
+                    }
+                    
+                    // Reset lastTime but keep remainder so we don't drift and lose speed accuracy
+                    lastTime = timestamp - (deltaTime % timePerPoint);
+                }
                 
-                // Add a small delay/throttle if needed, or just use rAF
-                // rAF runs at ~60fps. If path has 1000 points, it takes ~16 seconds. Good speed.
                 requestAnimationFrame(tick);
             }
-            tick();
+            requestAnimationFrame(tick);
         }
 
         loadActiveRides();

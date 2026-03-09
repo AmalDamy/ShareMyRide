@@ -32,19 +32,20 @@ if (!isset($_SESSION['user_id'])) {
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                     <div class="form-group">
                         <label>From *</label>
-                        <input type="text" id="offerFrom" class="form-input" placeholder="City or Campus" required>
+                        <input type="text" id="offerFrom" class="form-input" placeholder="City or Campus" oninput="validateLocationLive('offerFrom', 'errorFrom', 'Starting location')" required>
                         <span id="errorFrom" class="error-message">Please enter a valid start location</span>
                     </div>
                     <div class="form-group">
                         <label>To *</label>
-                        <input type="text" id="offerTo" class="form-input" placeholder="Destination" required>
+                        <input type="text" id="offerTo" class="form-input" placeholder="Destination" oninput="validateLocationLive('offerTo', 'errorTo', 'Destination')" required>
                         <span id="errorTo" class="error-message">Please enter a valid destination</span>
                     </div>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 1.5rem;">
                     <label>Intermediate Stops (Optional)</label>
-                    <input type="text" id="offerStops" class="form-input" placeholder="e.g. Kanjirapally, Ponkunnam (Comma separated)">
+                    <input type="text" id="offerStops" class="form-input" placeholder="e.g. Kanjirapally, Ponkunnam (Comma separated)" oninput="validateLocationLive('offerStops', 'errorStops', 'Intermediate stops')">
+                    <span id="errorStops" class="error-message"></span>
                     <span style="font-size: 0.8rem; color: var(--text-gray);">Adding stops helps passengers find your ride easier.</span>
                 </div>
 
@@ -85,7 +86,7 @@ if (!isset($_SESSION['user_id'])) {
                     </div>
                     <div class="form-group">
                         <label>Price per Seat (₹) *</label>
-                        <input type="number" id="offerPrice" class="form-input" placeholder="e.g. 150" min="1" required>
+                        <input type="text" id="offerPrice" class="form-input" placeholder="e.g. 150" oninput="this.value = this.value.replace(/[^0-9.]/g, ''); if(this.value && parseFloat(this.value) > 0) clearError('offerPrice','errorPrice');" required>
                         <span id="errorPrice" class="error-message">Please enter a valid price</span>
                     </div>
                 </div>
@@ -162,6 +163,35 @@ if (!isset($_SESSION['user_id'])) {
             errors.forEach(e => e.style.display = 'none');
             document.getElementById('rideFormMessage').innerHTML = '';
         }
+        function clearError(fieldId, errorId) {
+            const input = document.getElementById(fieldId);
+            const errorSpan = document.getElementById(errorId);
+            if(input) input.classList.remove('error');
+            if(errorSpan) {
+                errorSpan.style.display = 'none';
+            }
+        }
+
+        // Live Validation: Allows letters, numbers, spaces, and valid special chars like , . - '
+        function validateLocationLive(fieldId, errorId, fieldName) {
+            const val = document.getElementById(fieldId).value.trim();
+            const hasLetters = /[a-zA-Z]/.test(val);
+            const validPattern = /^[a-zA-Z0-9\s,\.\-']+$/;
+            
+            if (val === '') {
+                clearError(fieldId, errorId);
+                return true;
+            } else if (!hasLetters) {
+                showError(fieldId, errorId, `${fieldName} must contain at least one letter`);
+                return false;
+            } else if (!validPattern.test(val)) {
+                showError(fieldId, errorId, `${fieldName} contains invalid characters (@,#,$,etc)`);
+                return false;
+            } else {
+                clearError(fieldId, errorId);
+                return true;
+            }
+        }
 
         async function handleRideSubmit(e) {
             e.preventDefault();
@@ -180,26 +210,21 @@ if (!isset($_SESSION['user_id'])) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
-            // Regex: Must contain at least one letter
-            const locationRegex = /[a-zA-Z]/;
-
             // Validate From
-            if (!from) {
+            const fromValid = validateLocationLive('offerFrom', 'errorFrom', 'Starting location');
+            if (!fromValid) hasError = true;
+            if (fromValid && !from) {
                 showError('offerFrom', 'errorFrom', 'Please enter starting location');
-                hasError = true;
-            } else if (!locationRegex.test(from)) {
-                showError('offerFrom', 'errorFrom', 'Location must contain letters');
                 hasError = true;
             }
 
             // Validate To
-            if (!to) {
+            const toValid = validateLocationLive('offerTo', 'errorTo', 'Destination');
+            if (!toValid) hasError = true;
+            if (toValid && !to) {
                 showError('offerTo', 'errorTo', 'Please enter destination');
                 hasError = true;
-            } else if (!locationRegex.test(to)) {
-                showError('offerTo', 'errorTo', 'Destination must contain letters');
-                hasError = true;
-            } else if (from.toLowerCase() === to.toLowerCase()) {
+            } else if (from.toLowerCase() === to.toLowerCase() && from !== '') {
                 showError('offerTo', 'errorTo', 'Destination cannot be same as start');
                 hasError = true;
             }
@@ -235,7 +260,7 @@ if (!isset($_SESSION['user_id'])) {
             }
 
             // Validate Price
-            if (!price || isNaN(price) || parseFloat(price) <= 0) {
+            if (!price || price === '' || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
                 showError('offerPrice', 'errorPrice', 'Price must be greater than 0');
                 hasError = true;
             }

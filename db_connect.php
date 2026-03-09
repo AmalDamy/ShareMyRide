@@ -1,8 +1,11 @@
 <?php
-$servername = "127.0.0.1";
-$username   = "root";  // Default XAMPP username
-$password   = "";      // Default XAMPP password (blank)
-$dbname     = "sharemyride";
+$servername = getenv('DB_HOST') ?: "127.0.0.1";
+$username   = getenv('DB_USER') ?: "root";
+$password   = getenv('DB_PASS') ?: "";
+$dbname     = getenv('DB_NAME') ?: "sharemyride";
+
+// Force SSL connection for Azure MySQL if in production
+$is_production = getenv('DB_HOST') !== false && getenv('DB_HOST') !== "127.0.0.1";
 
 // Create connection (without selecting DB first)
 $conn = new mysqli($servername, $username, $password);

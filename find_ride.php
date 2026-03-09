@@ -823,9 +823,14 @@ if (!isset($_SESSION['user_id'])) {
                         <div style="text-align: right;">
                             <div class="ride-price" style="font-size: 1.8rem; margin-bottom: 0.25rem; color: var(--text-dark); font-weight: 800;">₹${price}</div>
                             <div style="color: var(--text-gray); font-size: 0.9rem; margin-bottom: 0.75rem;">${ride.seats_available} seats available</div>
-                            <button onclick="requestRide(${ride.ride_id})" class="btn btn-primary" style="padding: 0.6rem 2rem; border-radius: 50px;">
-                                Request Ride
-                            </button>
+                            ${parseInt(ride.is_requested) > 0 
+                                ? `<button onclick="requestRide(${ride.ride_id})" class="btn" style="padding: 0.6rem 2rem; border-radius: 50px; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;">
+                                      <i class="fas fa-check-circle"></i> Requested
+                                   </button>`
+                                : `<button onclick="requestRide(${ride.ride_id})" class="btn btn-primary" style="padding: 0.6rem 2rem; border-radius: 50px;">
+                                      Request Ride
+                                   </button>`
+                            }
                         </div>
                     </div>
                 </div>
@@ -896,6 +901,14 @@ if (!isset($_SESSION['user_id'])) {
 
                 if (data.success && data.ride) {
                     currentRide = data.ride;
+                    
+                    // Check if already requested
+                    if (parseInt(currentRide.is_requested) > 0) {
+                        content.style.display = 'block';
+                        showPaymentResult('warning', 'Already Requested', 'You have already requested this ride. You can manage your ride requests from your dashboard.');
+                        loading.style.display = 'none';
+                        return;
+                    }
                     
                     document.getElementById('mFrom').textContent = currentRide.from_location;
                     document.getElementById('mTo').textContent = currentRide.to_location;

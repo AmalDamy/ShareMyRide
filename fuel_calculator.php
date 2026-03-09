@@ -31,25 +31,28 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                 <div class="form-group">
                     <label><i class="fas fa-route"></i> Distance (km) *</label>
-                    <input type="number" id="distance" class="form-input" placeholder="e.g., 150" min="0" oninput="calculate()">
+                    <input type="number" id="distance" class="form-input" placeholder="e.g., 150" min="0" step="any" onkeydown="if(event.key==='-') return false;" oninput="calculate()">
                     <span id="errorDistance" class="error-message" style="display:none; color: var(--error-red); font-size: 0.8rem; margin-top: 4px;">Distance cannot be negative</span>
                 </div>
                 <div class="form-group">
                     <label><i class="fas fa-tachometer-alt"></i> Vehicle Mileage (km/l) *</label>
-                    <input type="number" id="mileage" class="form-input" placeholder="e.g., 15" min="0.1" step="0.1" oninput="calculate()">
+                    <input type="number" id="mileage" class="form-input" placeholder="e.g., 15" min="0.1" step="any" onkeydown="if(event.key==='-') return false;" oninput="calculate()">
                     <span id="errorMileage" class="error-message" style="display:none; color: var(--error-red); font-size: 0.8rem; margin-top: 4px;">Efficiency must be positive</span>
                 </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
                 <div class="form-group">
-                    <label><i class="fas fa-gas-pump"></i> Fuel Price (₹/liter) *</label>
-                    <input type="number" id="fuelPrice" class="form-input" placeholder="e.g., 105" value="105" min="0" oninput="calculate()">
+                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                        <span><i class="fas fa-gas-pump"></i> Fuel Price (₹/liter) *</span>
+                        <span id="livePriceStatus" style="font-size: 0.75rem; color: #94a3b8;"><i class="fas fa-spinner fa-spin"></i> Fetching live price...</span>
+                    </label>
+                    <input type="number" id="fuelPrice" class="form-input" placeholder="e.g., 105.50" min="0" step="any" onkeydown="if(event.key==='-') return false;" oninput="calculate()">
                     <span id="errorFuelPrice" class="error-message" style="display:none; color: var(--error-red); font-size: 0.8rem; margin-top: 4px;">Price cannot be negative</span>
                 </div>
                 <div class="form-group">
                     <label><i class="fas fa-users"></i> Number of Passengers</label>
-                    <input type="number" id="passengers" class="form-input" placeholder="e.g., 3" min="1" value="1" oninput="calculate()">
+                    <input type="number" id="passengers" class="form-input" placeholder="e.g., 3" min="1" step="1" value="1" onkeydown="if(event.key==='-' || event.key==='.') return false;" oninput="calculate()">
                     <span id="errorPassengers" class="error-message" style="display:none; color: var(--error-red); font-size: 0.8rem; margin-top: 4px;">At least 1 passenger required</span>
                 </div>
             </div>
@@ -57,7 +60,7 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                 <div class="form-group">
                     <label><i class="fas fa-road"></i> Additional Costs (Tolls, Parking)</label>
-                    <input type="number" id="additional" class="form-input" placeholder="e.g., 200" value="0" min="0" oninput="calculate()">
+                    <input type="number" id="additional" class="form-input" placeholder="e.g., 200" value="0" min="0" step="any" onkeydown="if(event.key==='-') return false;" oninput="calculate()">
                     <span id="errorAdditional" class="error-message" style="display:none; color: var(--error-red); font-size: 0.8rem; margin-top: 4px;">Costs cannot be negative</span>
                 </div>
                 <div class="form-group">
@@ -123,6 +126,33 @@
     <script>
         function toggleMobileMenu() {
             document.getElementById('navLinks').classList.toggle('show');
+        }
+
+        window.onload = function() {
+            fetchLiveFuelPrice();
+        };
+
+        async function fetchLiveFuelPrice() {
+            const fuelInput = document.getElementById('fuelPrice');
+            const statusSpan = document.getElementById('livePriceStatus');
+            
+            try {
+                const response = await fetch('api_fuel_price.php');
+                const data = await response.json();
+                
+                if (data.success && data.price) {
+                    fuelInput.value = data.price;
+                    statusSpan.innerHTML = `<i class="fas fa-check-circle" style="color:var(--success-green);"></i> Kerala Today: ₹${data.price}`;
+                    statusSpan.style.color = "var(--text-gray)";
+                    calculate(); // Recalculate if other fields are filled
+                } else {
+                    throw new Error("Invalid response");
+                }
+            } catch (err) {
+                // Silently fallback to an average 105.50 if API fails
+                fuelInput.value = 105.50;
+                statusSpan.innerHTML = `<i class="fas fa-exclamation-circle" style="color:var(--error-red);"></i> Average Price Used`;
+            }
         }
 
         function calculate() {
