@@ -424,6 +424,26 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
         </div>
     </main>
 
+    <!-- Reply Modal -->
+    <div id="replyModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); backdrop-filter:blur(3px);">
+        <div style="background:white; border-radius:16px; max-width:550px; margin:5% auto; overflow:hidden; box-shadow:0 25px 50px rgba(0,0,0,0.2); animation:fadeUp 0.3s ease;">
+            <div style="background:var(--secondary); padding:1.25rem 1.5rem; color:white; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; font-size:1.1rem;"><i class="fas fa-reply"></i> Reply to Message</h3>
+                <span onclick="closeReplyModal()" style="cursor:pointer; font-size:1.3rem; color:white;">&times;</span>
+            </div>
+            <div style="padding:1.5rem;">
+                <div id="replyMsgPreview" style="background:#f8fafc; border-radius:10px; padding:1rem; margin-bottom:1.25rem; border-left:3px solid var(--secondary);"></div>
+                <label style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:0.5rem;">Your Reply *</label>
+                <textarea id="replyText" rows="4" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:8px; font-family:inherit; font-size:0.9rem; resize:vertical;" placeholder="Type your response to the user..."></textarea>
+                <div id="replyError" style="color:var(--danger); font-size:0.85rem; margin-top:0.5rem; display:none;"></div>
+                <div style="display:flex; gap:0.75rem; margin-top:1.25rem;">
+                    <button onclick="closeReplyModal()" class="btn btn-outline" style="flex:1;">Cancel</button>
+                    <button onclick="submitReply()" id="replySubmitBtn" class="btn btn-primary" style="flex:2;"><i class="fas fa-paper-plane"></i> Send Reply</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // --- Navigation ---
         function switchView(viewId, el) {
@@ -662,9 +682,14 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                             actionBtns += `<button onclick="updateMsgStatus(${m.id}, 'read')" class="btn-sm btn-outline" style="margin-right:4px;" title="Mark as Read"><i class="fas fa-eye"></i></button>`;
                         }
                         if(m.status !== 'resolved') {
-                            actionBtns += `<button onclick="updateMsgStatus(${m.id}, 'resolved')" class="btn-sm btn-primary" style="margin-right:4px;" title="Mark Resolved"><i class="fas fa-check"></i></button>`;
+                            actionBtns += `<button onclick="openReplyModal(${m.id}, '${m.name.replace(/'/g,"\\'")}', '${m.email.replace(/'/g,"\\'")}', '${(subjectLabels[m.subject] || m.subject).replace(/'/g,"\\'")}', \`${m.message.replace(/`/g,'')}\`)" class="btn-sm btn-primary" style="margin-right:4px;" title="Reply"><i class="fas fa-reply"></i></button>`;
                         }
                         actionBtns += `<button onclick="deleteMessage(${m.id})" class="btn-sm btn-danger-soft" title="Delete"><i class="fas fa-trash"></i></button>`;
+
+                        // Show admin reply if exists
+                        const replyHtml = m.admin_reply 
+                            ? `<div style="margin-top:6px; background:#f0fdf4; padding:6px 10px; border-radius:6px; font-size:0.8rem; border-left:2px solid #10b981;"><strong style="color:#059669;"><i class="fas fa-reply"></i> Admin:</strong> ${m.admin_reply.length > 60 ? m.admin_reply.substring(0,60)+'...' : m.admin_reply}</div>` 
+                            : '';
 
                         tbody.innerHTML += `
                         <tr style="${m.status === 'new' ? 'background:#FFFBEB;' : ''}">
@@ -674,7 +699,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                                 ${m.user_id ? '<div style="font-size:0.7rem; color:#64748b;"><i class="fas fa-user-check"></i> Registered User</div>' : '<div style="font-size:0.7rem; color:#94A3B8;"><i class="fas fa-user"></i> Guest</div>'}
                             </td>
                             <td><span style="background:#E0E7FF; color:#4338CA; padding:3px 8px; border-radius:6px; font-size:0.8rem; font-weight:600;">${subjectLabels[m.subject] || m.subject}</span></td>
-                            <td style="max-width:300px;"><div style="font-size:0.9rem; line-height:1.4;">${shortMsg}</div></td>
+                            <td style="max-width:300px;"><div style="font-size:0.9rem; line-height:1.4;">${shortMsg}</div>${replyHtml}</td>
                             <td style="white-space:nowrap; font-size:0.85rem;">${dateStr}</td>
                             <td><span class="badge ${statusClass}">${statusLabel}</span></td>
                             <td style="white-space:nowrap;">${actionBtns}</td>
@@ -709,6 +734,63 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                 const data = await res.json();
                 if(data.success) loadMessages();
             } catch(e) {}
+        }
+
+        // --- Reply Modal ---
+        let currentReplyId = null;
+
+        function openReplyModal(id, name, email, subject, message) {
+            currentReplyId = id;
+            document.getElementById('replyMsgPreview').innerHTML = `
+                <div style="font-weight:600; margin-bottom:4px;">${name} <span style="font-weight:400; color:#94A3B8;">&lt;${email}&gt;</span></div>
+                <div style="font-size:0.8rem; color:#6366F1; font-weight:600; margin-bottom:6px;">${subject}</div>
+                <div style="font-size:0.9rem; color:#475569; line-height:1.5;">${message}</div>
+            `;
+            document.getElementById('replyText').value = '';
+            document.getElementById('replyError').style.display = 'none';
+            document.getElementById('replyModal').style.display = 'block';
+        }
+
+        function closeReplyModal() {
+            document.getElementById('replyModal').style.display = 'none';
+            currentReplyId = null;
+        }
+
+        async function submitReply() {
+            const reply = document.getElementById('replyText').value.trim();
+            const errorEl = document.getElementById('replyError');
+            
+            if (!reply) {
+                errorEl.innerText = 'Please type a reply before sending.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            const btn = document.getElementById('replySubmitBtn');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('api_admin.php?action=reply_message', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id: currentReplyId, reply })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    closeReplyModal();
+                    loadMessages();
+                } else {
+                    errorEl.innerText = data.message || 'Failed to send reply.';
+                    errorEl.style.display = 'block';
+                }
+            } catch(e) {
+                errorEl.innerText = 'Network error. Please try again.';
+                errorEl.style.display = 'block';
+            }
+
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Reply';
+            btn.disabled = false;
         }
     </script>
 </body>

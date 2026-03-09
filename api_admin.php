@@ -152,6 +152,52 @@ if ($method === 'POST') {
         }
     }
 
+    // Reply to Message
+    elseif ($action === 'reply_message') {
+        $msg_id = $input['id'] ?? 0;
+        $reply = trim($input['reply'] ?? '');
+        if(!$msg_id || empty($reply)) {
+            echo json_encode(['success'=>false, 'message'=>'Reply text is required']); exit;
+        }
+
+        // Add admin_reply column if it doesn't exist
+        $conn->query("ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS admin_reply TEXT DEFAULT NULL");
+        $conn->query("ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS replied_at DATETIME DEFAULT NULL");
+
+        // Save reply and mark as resolved
+        $stmt = $conn->prepare("UPDATE contact_messages SET admin_reply = ?, replied_at = NOW(), status = 'resolved' WHERE id = ?");
+        $stmt->bind_param("si", $reply, $msg_id);
+
+        if ($stmt->execute()) {
+            // Send notification to the user if they are registered
+            $msgStmt = $conn->prepare("SELECT user_id, name, subject FROM contact_messages WHERE id = ?");
+            $msgStmt->bind_param("i", $msg_id);
+            $msgStmt->execute();
+            $msgData = $msgStmt->get_result()->fetch_assoc();
+
+            if ($msgData && $msgData['user_id']) {
+                // Create notification table if not exists
+                $conn->query("CREATE TABLE IF NOT EXISTS notifications (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    message TEXT NOT NULL,
+                    type VARCHAR(50) DEFAULT 'general',
+                    is_read TINYINT DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )");
+
+                $notifMsg = "Admin replied to your enquiry (" . ucfirst($msgData['subject']) . "): \"" . substr($reply, 0, 100) . (strlen($reply) > 100 ? '...' : '') . "\"";
+                $notifStmt = $conn->prepare("INSERT INTO notifications (user_id, message, type) VALUES (?, ?, 'admin_reply')");
+                $notifStmt->bind_param("is", $msgData['user_id'], $notifMsg);
+                $notifStmt->execute();
+            }
+
+            echo json_encode(['success' => true, 'message' => 'Reply sent successfully']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to save reply: ' . $stmt->error]);
+        }
+    }
+
     exit;
 }
 ?>

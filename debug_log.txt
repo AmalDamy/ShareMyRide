@@ -789,3 +789,9 @@ User Info: sharemyride17@gmail.com, ShareMyRide, 109258318570260008343
 Step 5: Starting DB checks
 Rows found via Google ID: 1
 Login Success: sharemyride17@gmail.com
+Callback hit at 2026-03-09 13:20:48
+Credential received
+User Info: sharemyride17@gmail.com, ShareMyRide, 109258318570260008343
+Step 5: Starting DB checks
+Rows found via Google ID: 1
+Login Success: sharemyride17@gmail.com
