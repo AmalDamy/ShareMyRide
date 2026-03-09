@@ -61,6 +61,17 @@ if ($method === 'GET') {
             $users[] = $row;
         }
         echo json_encode(['success' => true, 'users' => $users]);
+
+    } elseif ($action === 'messages') {
+        // List Contact Messages
+        $result = $conn->query("SELECT * FROM contact_messages ORDER BY created_at DESC");
+        $messages = [];
+        if ($result) {
+            while($row = $result->fetch_assoc()) {
+                $messages[] = $row;
+            }
+        }
+        echo json_encode(['success' => true, 'messages' => $messages]);
     }
     
     exit;
@@ -109,6 +120,35 @@ if ($method === 'POST') {
             echo json_encode(['success' => true, 'message' => 'User verified']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Update failed']);
+        }
+    }
+
+    // Update Message Status
+    elseif ($action === 'update_message_status') {
+        $msg_id = $input['id'] ?? 0;
+        $status = $input['status'] ?? '';
+        if(!$msg_id || !in_array($status, ['new','read','resolved'])) {
+            echo json_encode(['success'=>false, 'message'=>'Invalid data']); exit;
+        }
+        $stmt = $conn->prepare("UPDATE contact_messages SET status = ? WHERE id = ?");
+        $stmt->bind_param("si", $status, $msg_id);
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true, 'message' => 'Status updated']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Update failed']);
+        }
+    }
+
+    // Delete Message
+    elseif ($action === 'delete_message') {
+        $msg_id = $input['id'] ?? 0;
+        if(!$msg_id) { echo json_encode(['success'=>false]); exit; }
+        $stmt = $conn->prepare("DELETE FROM contact_messages WHERE id = ?");
+        $stmt->bind_param("i", $msg_id);
+        if ($stmt->execute()) {
+            echo json_encode(['success' => true, 'message' => 'Message deleted']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Delete failed']);
         }
     }
 

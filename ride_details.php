@@ -99,16 +99,8 @@ if (!isset($_SESSION['user_id'])) {
 </head>
 <body>
 
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container nav-content">
-            <a href="index.php" class="logo">ShareMyRide</a>
-            <div class="nav-links">
-                <a href="dashboard.php">Back to Dashboard</a>
-                <a href="logout.php" style="color: var(--error-red); font-weight: 600; margin-left: 10px;"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
-        </div>
-    </nav>
+    <?php include 'navbar.php'; ?>
+
 
     <!-- Map -->
     <div id="map"></div>

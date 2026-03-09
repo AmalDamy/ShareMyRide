@@ -149,17 +149,8 @@ if (!empty($userData['profile_pic'])) {
     </style>
 </head>
 <body>
-    <nav class="navbar" style="position: absolute; background: transparent; box-shadow: none;">
-        <div class="container nav-content">
-            <a href="index.php" class="logo" style="color: white;">ShareMyRide</a>
-            <div class="nav-links">
-                <a href="dashboard.php" style="color: white; font-weight: 700;">Dashboard</a>
-                <a href="find_ride.php" style="color: white;">Find Ride</a>
-                <a href="offer_ride.php" style="color: white;">Offer Ride</a>
-                <a href="logout.php" style="color: #fecaca; font-weight: 600;"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
-        </div>
-    </nav>
+    <?php include 'navbar.php'; ?>
+
 
     <header class="profile-header">
         <div class="container">

@@ -248,6 +248,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
             <div class="nav-item" onclick="switchView('users', this)">
                 <i class="fas fa-users"></i> Users
             </div>
+            <div class="nav-item" onclick="switchView('messages', this)">
+                <i class="fas fa-envelope"></i> Messages <span id="msg-badge" style="margin-left:auto; background:var(--danger); color:white; font-size:0.7rem; padding:2px 7px; border-radius:10px; display:none;"></span>
+            </div>
             <div class="nav-item" onclick="switchView('reports', this)">
                 <i class="fas fa-flag"></i> Reports
             </div>
@@ -377,6 +380,38 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                 </div>
             </div>
             
+            <!-- VIEW: MESSAGES -->
+            <div id="messages" class="view-section">
+                <div class="card">
+                    <div class="table-header">
+                        <h3>User Messages & Enquiries</h3>
+                        <div style="display:flex; gap:8px;">
+                            <select id="msgFilter" onchange="loadMessages()" style="padding:0.4rem; border:1px solid #ccc; border-radius:4px; font-size:0.85rem;">
+                                <option value="all">All Messages</option>
+                                <option value="new">New</option>
+                                <option value="read">Read</option>
+                                <option value="resolved">Resolved</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table id="messagesTable">
+                            <thead>
+                                <tr>
+                                    <th>From</th>
+                                    <th>Subject</th>
+                                    <th>Message</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- VIEW: REPORTS -->
             <div id="reports" class="view-section">
                 <div class="card" style="padding:3rem; text-align:center;">
@@ -397,6 +432,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                 'dashboard': 'Overview',
                 'rides': 'Manage Rides',
                 'users': 'User Management',
+                'messages': 'Messages & Enquiries',
                 'reports': 'Reports'
             };
             document.getElementById('pageTitle').innerText = titles[viewId];
@@ -413,6 +449,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
             if(viewId === 'dashboard') loadStats();
             if(viewId === 'rides') loadRides();
             if(viewId === 'users') loadUsers();
+            if(viewId === 'messages') loadMessages();
         }
 
         function refreshAll() {
@@ -570,6 +607,109 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
         // Init
         loadStats();
+        loadMessageBadge();
+
+        // --- Messages ---
+        async function loadMessageBadge() {
+            try {
+                const res = await fetch('api_admin.php?action=messages');
+                const data = await res.json();
+                if(data.success) {
+                    const newCount = data.messages.filter(m => m.status === 'new').length;
+                    const badge = document.getElementById('msg-badge');
+                    if(newCount > 0) {
+                        badge.innerText = newCount;
+                        badge.style.display = 'inline';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            } catch(e) {}
+        }
+
+        async function loadMessages() {
+            const tbody = document.querySelector('#messagesTable tbody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1rem;">Loading...</td></tr>';
+            const filter = document.getElementById('msgFilter')?.value || 'all';
+            try {
+                const res = await fetch('api_admin.php?action=messages');
+                const data = await res.json();
+                if(data.success) {
+                    let msgs = data.messages;
+                    if(filter !== 'all') {
+                        msgs = msgs.filter(m => m.status === filter);
+                    }
+                    tbody.innerHTML = '';
+                    if(msgs.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94A3B8;"><i class="fas fa-inbox" style="font-size:2rem; display:block; margin-bottom:0.5rem;"></i>No messages found.</td></tr>';
+                        return;
+                    }
+                    const subjectLabels = {
+                        'general': 'General Inquiry',
+                        'support': 'Technical Support',
+                        'safety': 'Safety Concern',
+                        'partnership': 'Partnership',
+                        'feedback': 'Feedback'
+                    };
+                    msgs.forEach(m => {
+                        const statusClass = m.status === 'new' ? 'bg-yellow' : (m.status === 'resolved' ? 'bg-green' : 'bg-gray');
+                        const statusLabel = m.status.charAt(0).toUpperCase() + m.status.slice(1);
+                        const shortMsg = m.message.length > 80 ? m.message.substring(0, 80) + '...' : m.message;
+                        const dateStr = new Date(m.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+                        let actionBtns = '';
+                        if(m.status === 'new') {
+                            actionBtns += `<button onclick="updateMsgStatus(${m.id}, 'read')" class="btn-sm btn-outline" style="margin-right:4px;" title="Mark as Read"><i class="fas fa-eye"></i></button>`;
+                        }
+                        if(m.status !== 'resolved') {
+                            actionBtns += `<button onclick="updateMsgStatus(${m.id}, 'resolved')" class="btn-sm btn-primary" style="margin-right:4px;" title="Mark Resolved"><i class="fas fa-check"></i></button>`;
+                        }
+                        actionBtns += `<button onclick="deleteMessage(${m.id})" class="btn-sm btn-danger-soft" title="Delete"><i class="fas fa-trash"></i></button>`;
+
+                        tbody.innerHTML += `
+                        <tr style="${m.status === 'new' ? 'background:#FFFBEB;' : ''}">
+                            <td>
+                                <div style="font-weight:600;">${m.name}</div>
+                                <div style="font-size:0.8rem; color:#94A3B8;">${m.email}</div>
+                                ${m.user_id ? '<div style="font-size:0.7rem; color:#64748b;"><i class="fas fa-user-check"></i> Registered User</div>' : '<div style="font-size:0.7rem; color:#94A3B8;"><i class="fas fa-user"></i> Guest</div>'}
+                            </td>
+                            <td><span style="background:#E0E7FF; color:#4338CA; padding:3px 8px; border-radius:6px; font-size:0.8rem; font-weight:600;">${subjectLabels[m.subject] || m.subject}</span></td>
+                            <td style="max-width:300px;"><div style="font-size:0.9rem; line-height:1.4;">${shortMsg}</div></td>
+                            <td style="white-space:nowrap; font-size:0.85rem;">${dateStr}</td>
+                            <td><span class="badge ${statusClass}">${statusLabel}</span></td>
+                            <td style="white-space:nowrap;">${actionBtns}</td>
+                        </tr>
+                        `;
+                    });
+                    loadMessageBadge();
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        async function updateMsgStatus(id, status) {
+            try {
+                const res = await fetch('api_admin.php?action=update_message_status', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id, status })
+                });
+                const data = await res.json();
+                if(data.success) loadMessages();
+            } catch(e) {}
+        }
+
+        async function deleteMessage(id) {
+            if(!confirm('Delete this message permanently?')) return;
+            try {
+                const res = await fetch('api_admin.php?action=delete_message', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id })
+                });
+                const data = await res.json();
+                if(data.success) loadMessages();
+            } catch(e) {}
+        }
     </script>
 </body>
 </html>

@@ -1,3 +1,4 @@
+<?php require_once 'db_connect.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,8 +24,8 @@
         .tracking-container {
             display: flex;
             flex: 1;
-            height: calc(100vh - 70px); /* Subtract navbar height */
             position: relative;
+            min-height: 0; /* Important for flex children with overflow */
         }
 
         .sidebar {
@@ -100,22 +101,9 @@
 </head>
 <body>
 
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container nav-content">
-            <a href="index.php" class="logo">ShareMyRide</a>
-            <div class="nav-links" id="navLinks">
-                <a href="dashboard.php">Dashboard</a>
-                <a href="find_ride.php">Find Ride</a>
-                <a href="offer_ride.php">Offer Ride</a>
-                <a href="live_tracking.php" style="color: var(--primary-teal); font-weight: 700;">Live Tracking</a>
-                <a href="logout.php" style="color: var(--error-red);"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
-            <button class="mobile-menu-toggle" onclick="document.getElementById('navLinks').classList.toggle('show')">
-                <i class="fas fa-bars"></i>
-            </button>
-        </div>
-    </nav>
+    <?php include 'navbar.php'; ?>
+    <?php include 'sub_navbar.php'; ?>
+
 
     <div class="tracking-container">
         

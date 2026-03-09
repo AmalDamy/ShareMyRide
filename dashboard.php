@@ -62,24 +62,11 @@ $co2Saved = $ridesTaken * 2.5;
 </head>
 <body style="background-color: #f3f4f6;">
 
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container nav-content">
-            <a href="index.php" class="logo">ShareMyRide</a>
-            <div class="nav-links" id="navLinks">
-                <a href="dashboard.php" style="color: var(--primary-teal); font-weight: 700;">Dashboard</a>
-                <a href="find_ride.php">Find Ride</a>
-                <a href="offer_ride.php">Offer Ride</a>
-                <a href="long_trip.php">Long Trip</a>
-                <button onclick="window.location.href='logout.php'" class="btn btn-outline" style="padding: 0.5rem 1rem; border-color: var(--error-red); color: var(--error-red);">Logout</button>
-            </div>
-            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
-                <i class="fas fa-bars"></i>
-            </button>
-        </div>
-    </nav>
+    <?php include 'navbar.php'; ?>
+    <?php include 'sub_navbar.php'; ?>
 
-    <div class="container" style="padding: 6rem 0 3rem;">
+
+    <div class="container" style="padding-top: 2rem;">
         
         <!-- Welcome Header -->
         <div style="background: linear-gradient(135deg, var(--dark-teal), var(--primary-teal)); color: white; padding: 3rem; border-radius: var(--radius-lg); margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: center;">

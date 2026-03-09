@@ -1,3 +1,10 @@
+<?php 
+require_once 'db_connect.php'; 
+
+// Pre-fill user details if logged in
+$loggedInName = isset($_SESSION['username']) ? ucwords(strtolower($_SESSION['username'])) : '';
+$loggedInEmail = $_SESSION['email'] ?? '';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,24 +16,9 @@
 </head>
 <body>
 
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container nav-content">
-            <a href="index.php" class="logo">ShareMyRide</a>
-            <div class="nav-links" id="navLinks">
-                <a href="dashboard.php" style="color: var(--primary-teal); font-weight: 700;">Dashboard</a>
-                <a href="find_ride.php">Find Ride</a>
-                <a href="offer_ride.php">Offer Ride</a>
-                <a href="long_trip.php">Long Trip</a>
-                <a href="fuel_calculator.php">Fuel Calculator</a>
-                <a href="contact.php" style="color: var(--primary-teal);">Contact</a>
-                <a href="logout.php" style="color: var(--error-red); font-weight: 600;"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
-            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
-                <i class="fas fa-bars"></i>
-            </button>
-        </div>
-    </nav>
+    <?php include 'navbar.php'; ?>
+    <?php include 'sub_navbar.php'; ?>
+
 
     <!-- Header -->
     <div style="background: linear-gradient(135deg, var(--primary-teal), var(--dark-teal)); color: white; padding: 4rem 0; text-align: center;">
@@ -45,12 +37,12 @@
                 <form id="contactForm" onsubmit="handleContactSubmit(event)">
                     <div class="form-group" style="margin-bottom: 1.5rem;">
                         <label>Your Name *</label>
-                        <input type="text" id="contactName" class="form-input" placeholder="John Doe" required>
+                        <input type="text" id="contactName" class="form-input" placeholder="John Doe" value="<?php echo htmlspecialchars($loggedInName); ?>" <?php echo $loggedInName ? 'readonly style="background: #f1f5f9; cursor: not-allowed;"' : ''; ?> required>
                     </div>
 
                     <div class="form-group" style="margin-bottom: 1.5rem;">
                         <label>Email Address *</label>
-                        <input type="email" id="contactEmail" class="form-input" placeholder="john@example.com" required>
+                        <input type="email" id="contactEmail" class="form-input" placeholder="john@example.com" value="<?php echo htmlspecialchars($loggedInEmail); ?>" <?php echo $loggedInEmail ? 'readonly style="background: #f1f5f9; cursor: not-allowed;"' : ''; ?> required>
                     </div>
 
                     <div class="form-group" style="margin-bottom: 1.5rem;">
@@ -158,7 +150,7 @@
             document.getElementById('navLinks').classList.toggle('show');
         }
 
-        function handleContactSubmit(e) {
+        async function handleContactSubmit(e) {
             e.preventDefault();
             
             const formMessage = document.getElementById('contactFormMessage');
@@ -172,14 +164,39 @@
                 return;
             }
 
-            // Success message
-            formMessage.innerHTML = '<div class="success-message fade-in"><i class="fas fa-check-circle"></i> Thank you! Your message has been sent successfully. We\'ll get back to you within 24 hours.</div>';
+            // Disable button & show loading
+            const btn = document.querySelector('#contactForm button[type="submit"]');
+            const originalBtn = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            btn.disabled = true;
 
-            // Reset form
+            try {
+                const response = await fetch('api_contact.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, subject, message })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    formMessage.innerHTML = '<div class="success-message fade-in"><i class="fas fa-check-circle"></i> ' + result.message + '</div>';
+                    // Only reset subject and message (keep name/email for logged-in users)
+                    document.getElementById('contactSubject').value = '';
+                    document.getElementById('contactMessage').value = '';
+                } else {
+                    formMessage.innerHTML = '<div class="error-banner"><i class="fas fa-exclamation-circle"></i> ' + result.message + '</div>';
+                }
+            } catch (error) {
+                formMessage.innerHTML = '<div class="error-banner"><i class="fas fa-exclamation-circle"></i> Network error. Please try again.</div>';
+            }
+
+            btn.innerHTML = originalBtn;
+            btn.disabled = false;
+
+            // Clear message after 5 seconds
             setTimeout(() => {
-                document.getElementById('contactForm').reset();
                 formMessage.innerHTML = '';
-            }, 3000);
+            }, 5000);
         }
     </script>
 

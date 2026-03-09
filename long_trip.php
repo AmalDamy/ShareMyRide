@@ -18,28 +18,12 @@ if (!isset($_SESSION['user_id'])) {
 <body>
 
 
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container nav-content">
-            <a href="index.php" class="logo">ShareMyRide</a>
-            <div class="nav-links" id="navLinks">
-                <a href="dashboard.php" style="color: var(--primary-teal); font-weight: 700;">Dashboard</a>
-                <a href="find_ride.php">Find Ride</a>
-                <a href="offer_ride.php">Offer Ride</a>
-                <a href="long_trip.php">Long Trip</a>
-                <a href="live_tracking.php" style="color: var(--primary-teal); font-weight: 700;"><i class="fas fa-location-arrow"></i> Live Tracking</a>
-                <a href="fuel_calculator.php">Fuel Calculator</a>
-                <a href="contact.php">Contact</a>
-                <a href="logout.php" style="color: var(--error-red); font-weight: 600;"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
-            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
-                <i class="fas fa-bars"></i>
-            </button>
-        </div>
-    </nav>
+    <?php include 'navbar.php'; ?>
+    <?php include 'sub_navbar.php'; ?>
+
 
     <!-- Page Header -->
-    <div style="background: linear-gradient(135deg, var(--primary-teal), var(--dark-teal)); color: white; padding: 8rem 0 3rem; text-align: center;">
+    <div style="background: linear-gradient(135deg, var(--primary-teal), var(--dark-teal)); color: white; padding: 4rem 0 3rem; text-align: center;">
         <div class="container">
             <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">Plan Your Long Trip</h1>
             <p style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 2rem;">Weekend getaways, holiday trips, or hometown visits - share the journey, split the costs!</p>

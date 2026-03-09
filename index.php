@@ -70,44 +70,7 @@ $isLoggedIn = isset($_SESSION['user_id']);
             z-index: -1;
         }
 
-        /* Navbar */
-        nav {
-            position: absolute;
-            top: 0;
-            width: 100%;
-            padding: 2rem 5%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 10;
-        }
 
-        .logo {
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: white;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            text-decoration: none;
-        }
-
-        .nav-btn {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            color: white;
-            padding: 0.8rem 2rem;
-            border-radius: 30px;
-            text-decoration: none;
-            font-weight: 600;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: all 0.3s ease;
-        }
-
-        .nav-btn:hover {
-            background: white;
-            color: var(--dark);
-            transform: translateY(-2px);
-        }
 
         /* Hero Section */
         .hero {
@@ -316,26 +279,8 @@ $isLoggedIn = isset($_SESSION['user_id']);
     <div class="hero-bg"></div>
     <div class="overlay"></div>
 
-    <!-- Navigation -->
-    <nav data-aos="fade-down" data-aos-duration="1000">
-        <a href="index.php" class="logo">Share<span style="color:var(--primary)">MyRide</span></a>
-        <!-- Use flex-grow to push auth buttons to right if needed, but space-between handles it -->
-        <div style="display:flex; gap:1rem;">
-            <?php if ($isLoggedIn): ?>
-                <a href="dashboard.php" class="nav-btn">Dashboard</a>
-                <a href="find_ride.php" class="nav-btn" style="background: transparent; border: none;">Find Ride</a>
-                <a href="offer_ride.php" class="nav-btn" style="background: transparent; border: none;">Offer Ride</a>
-                <a href="long_trip.php" class="nav-btn" style="background: transparent; border: none;">Long Trip</a>
-                <a href="logout.php" class="nav-btn" style="background: rgba(220,38,38,0.2); border-color: rgba(220,38,38,0.4);">
-                    <i class="fas fa-sign-out-alt"></i>
-                </a>
-            <?php else: ?>
-                <!-- Added Sign Up link in nav for convenience -->
-                <a href="login.php" class="nav-btn" style="background:transparent; border:none;">Log In</a>
-                <a href="login.php?mode=signup" class="nav-btn">Sign Up</a>
-            <?php endif; ?>
-        </div>
-    </nav>
+    <?php include 'navbar.php'; ?>
+
 
     <!-- Hero Section -->
     <section class="hero">

@@ -1,3 +1,4 @@
+<?php require_once 'db_connect.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,24 +10,9 @@
 </head>
 <body>
 
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container nav-content">
-            <a href="index.php" class="logo">ShareMyRide</a>
-            <div class="nav-links" id="navLinks">
-                <a href="dashboard.php" style="color: var(--primary-teal); font-weight: 700;">Dashboard</a>
-                <a href="find_ride.php">Find Ride</a>
-                <a href="offer_ride.php">Offer Ride</a>
-                <a href="long_trip.php">Long Trip</a>
-                <a href="fuel_calculator.php" style="color: var(--primary-teal);">Fuel Calculator</a>
-                <a href="contact.php">Contact</a>
-                <a href="logout.php" style="color: var(--error-red); font-weight: 600;"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </div>
-            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">
-                <i class="fas fa-bars"></i>
-            </button>
-        </div>
-    </nav>
+    <?php include 'navbar.php'; ?>
+    <?php include 'sub_navbar.php'; ?>
+
 
     <!-- Header -->
     <div style="background: linear-gradient(135deg, var(--primary-teal), var(--dark-teal)); color: white; padding: 4rem 0; text-align: center;">
