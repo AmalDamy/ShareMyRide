@@ -167,11 +167,11 @@ if (!empty($userData['profile_pic'])) {
                 <h2><?php echo htmlspecialchars($userData['name']); ?></h2>
                 <?php if ($userData['is_verified']): ?>
                 <div class="verification-badge">
-                    <i class="fas fa-check-circle"></i> Verified User
+                    <i class="fas fa-check-circle"></i> Verified
                 </div>
                 <?php else: ?>
                 <div class="verification-badge" style="background: #fef2f2; color: #991b1b;">
-                    <i class="fas fa-clock"></i> Identity Pending
+                    <i class="fas fa-clock"></i> Pending Verification
                 </div>
                 <?php endif; ?>
 

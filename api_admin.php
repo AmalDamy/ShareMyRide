@@ -95,17 +95,37 @@ if ($method === 'POST') {
         }
     }
 
-    // Delete User
+    // Delete User & Cleanup Related Data
     elseif ($action === 'delete_user') {
         $user_id = $input['user_id'] ?? 0;
-        if(!$user_id) { echo json_encode(['success'=>false]); exit; }
+        if(!$user_id) { echo json_encode(['success'=>false, 'message'=>'User ID missing']); exit; }
 
-        $stmt = $conn->prepare("DELETE FROM users WHERE user_id = ?");
-        $stmt->bind_param("i", $user_id);
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'User deleted successfully']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Delete failed']);
+        // Start transaction for safety
+        $conn->begin_transaction();
+
+        try {
+            // 1. Delete Notifications
+            $conn->query("DELETE FROM notifications WHERE user_id = $user_id");
+
+            // 2. Delete Reviews (where user is either reviewer or reviewee)
+            $conn->query("DELETE FROM reviews WHERE reviewer_id = $user_id OR reviewee_id = $user_id");
+
+            // 3. Delete Ride Requests (where user is passenger OR the request is for a ride offered by this user)
+            $conn->query("DELETE FROM ride_requests WHERE passenger_id = $user_id OR ride_id IN (SELECT ride_id FROM rides WHERE driver_id = $user_id)");
+
+            // 4. Delete Rides offered by this user
+            $conn->query("DELETE FROM rides WHERE driver_id = $user_id");
+
+            // 5. Finally, delete the User
+            $stmt = $conn->prepare("DELETE FROM users WHERE user_id = ?");
+            $stmt->bind_param("i", $user_id);
+            $stmt->execute();
+
+            $conn->commit();
+            echo json_encode(['success' => true, 'message' => 'User and all related data deleted successfully']);
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => 'Full cleanup failed: ' . $e->getMessage()]);
         }
     }
 

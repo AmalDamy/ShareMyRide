@@ -27,15 +27,15 @@ if (!isset($_SESSION['user_id'])) {
             <p style="color: var(--text-gray);">Cover your driving costs by sharing your empty seats.</p>
         </div>
 
-        <div class="search-card" style="display: block; padding: 2.5rem; border-top: 4px solid var(--primary-teal);">
+        <div class="search-card" style="display: block; padding: clamp(1rem, 5vw, 2.5rem); border-top: 4px solid var(--primary-teal);">
             <form id="rideForm" onsubmit="handleRideSubmit(event)">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
-                    <div class="form-group">
+                <div style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                    <div class="form-group" style="flex: 1; min-width: 250px;">
                         <label>From *</label>
                         <input type="text" id="offerFrom" class="form-input" placeholder="City or Campus" oninput="validateLocationLive('offerFrom', 'errorFrom', 'Starting location')" required>
                         <span id="errorFrom" class="error-message">Please enter a valid start location</span>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="flex: 1; min-width: 250px;">
                         <label>To *</label>
                         <input type="text" id="offerTo" class="form-input" placeholder="Destination" oninput="validateLocationLive('offerTo', 'errorTo', 'Destination')" required>
                         <span id="errorTo" class="error-message">Please enter a valid destination</span>
@@ -49,18 +49,18 @@ if (!isset($_SESSION['user_id'])) {
                     <span style="font-size: 0.8rem; color: var(--text-gray);">Adding stops helps passengers find your ride easier.</span>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
-                    <div class="form-group">
+                <div style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                    <div class="form-group" style="flex: 1; min-width: 150px;">
                         <label>Date *</label>
                         <input type="date" id="offerDate" class="form-input" required>
                         <span id="errorDate" class="error-message">Please select a future date</span>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="flex: 1; min-width: 150px;">
                         <label>Time *</label>
                         <input type="time" id="offerTime" class="form-input" required>
                         <span id="errorTime" class="error-message">Please select a time</span>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="flex: 1; min-width: 150px;">
                         <label>Vehicle Type *</label>
                         <select id="vehicleType" class="form-input" required>
                             <option value="">Select</option>
@@ -72,8 +72,8 @@ if (!isset($_SESSION['user_id'])) {
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
-                    <div class="form-group">
+                <div style="display: flex; gap: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap;">
+                    <div class="form-group" style="flex: 1; min-width: 150px;">
                         <label>Empty Seats *</label>
                         <select id="offerSeats" class="form-input" required>
                             <option value="">Select</option>
@@ -84,7 +84,7 @@ if (!isset($_SESSION['user_id'])) {
                         </select>
                         <span id="errorSeats" class="error-message">Please select seat count</span>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="flex: 1; min-width: 150px;">
                         <label>Price per Seat (₹) *</label>
                         <input type="text" id="offerPrice" class="form-input" placeholder="e.g. 150" oninput="this.value = this.value.replace(/[^0-9.]/g, ''); if(this.value && parseFloat(this.value) > 0) clearError('offerPrice','errorPrice');" required>
                         <span id="errorPrice" class="error-message">Please enter a valid price</span>

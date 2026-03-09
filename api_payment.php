@@ -252,6 +252,9 @@ if ($action === 'verify_payment') {
         exit;
     }
 
+    // Auto-accept the request now that it's paid
+    $conn->query("UPDATE ride_requests SET status = 'accepted' WHERE request_id = $request_id");
+
     // Fetch driver_id for notification
     $info = $conn->query("
         SELECT rq.ride_id, r.driver_id, r.to_location, p.amount

@@ -251,9 +251,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
             <div class="nav-item" onclick="switchView('messages', this)">
                 <i class="fas fa-envelope"></i> Messages <span id="msg-badge" style="margin-left:auto; background:var(--danger); color:white; font-size:0.7rem; padding:2px 7px; border-radius:10px; display:none;"></span>
             </div>
-            <div class="nav-item" onclick="switchView('reports', this)">
-                <i class="fas fa-flag"></i> Reports
-            </div>
 
             <div class="menu-label">System</div>
             <div class="nav-item" onclick="window.location.href='logout.php'">
@@ -412,14 +409,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                 </div>
             </div>
 
-            <!-- VIEW: REPORTS -->
-            <div id="reports" class="view-section">
-                <div class="card" style="padding:3rem; text-align:center;">
-                    <div style="font-size:3rem; color:#cbd5e1; margin-bottom:1rem;"><i class="fas fa-chart-pie"></i></div>
-                    <h3>Reports & Analytics</h3>
-                    <p style="color:#64748b;">Detailed reporting features are coming soon.</p>
-                </div>
-            </div>
+
 
         </div>
     </main>
@@ -452,8 +442,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                 'dashboard': 'Overview',
                 'rides': 'Manage Rides',
                 'users': 'User Management',
-                'messages': 'Messages & Enquiries',
-                'reports': 'Reports'
+                'messages': 'Messages & Enquiries'
             };
             document.getElementById('pageTitle').innerText = titles[viewId];
 
@@ -564,7 +553,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
                     data.users.forEach(u => {
                         const status = u.is_verified == 1 
                             ? '<span class="badge bg-green">Verified</span>' 
-                            : '<span class="badge bg-yellow">Pending</span>';
+                            : '<span class="badge bg-yellow">Pending Verification</span>';
                             
                         const verifyBtn = u.is_verified == 0 
                             ? `<button onclick="verifyUser(${u.user_id})" class="btn-sm btn-primary" style="margin-right:5px;">Verify</button>` 

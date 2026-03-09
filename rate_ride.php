@@ -21,7 +21,7 @@ $q = $conn->prepare("
     FROM ride_requests rq
     JOIN rides r ON rq.ride_id = r.ride_id
     JOIN users u ON r.driver_id = u.user_id
-    WHERE rq.request_id = ? AND rq.passenger_id = ?
+    WHERE rq.request_id = ? AND rq.passenger_id = ? AND rq.status IN ('accepted', 'completed')
 ");
 $q->bind_param("ii", $request_id, $passenger_id);
 $q->execute();

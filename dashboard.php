@@ -12,8 +12,8 @@ $userName = ucwords(strtolower($_SESSION['username'] ?? 'User'));
 $userEmail = $_SESSION['email'] ?? 'user@example.com';
 $userFiles = $_SESSION['profile_pic'] ?? null;
 
-// Ensure we fetch the latest profile pic and rating from DB
-$stmt = $conn->prepare("SELECT profile_pic, rating FROM users WHERE user_id = ?");
+// Ensure we fetch the latest profile pic, rating and verification status from DB
+$stmt = $conn->prepare("SELECT profile_pic, rating, is_verified FROM users WHERE user_id = ?");
 $stmt->bind_param("i", $_SESSION['user_id']);
 $stmt->execute();
 $res = $stmt->get_result();
@@ -69,29 +69,29 @@ $co2Saved = $ridesTaken * 2.5;
     <div class="container" style="padding-top: 2rem;">
         
         <!-- Welcome Header -->
-        <div style="background: linear-gradient(135deg, var(--dark-teal), var(--primary-teal)); color: white; padding: 3rem; border-radius: var(--radius-lg); margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: center;">
+        <div class="welcome-banner" style="background: linear-gradient(135deg, var(--dark-teal), var(--primary-teal)); color: white; padding: 3rem; border-radius: var(--radius-lg); margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <h1 style="margin-bottom: 0.5rem;">Welcome back, <span id="userName"><?php echo htmlspecialchars($userName); ?></span>! 👋</h1>
+                <h1 style="margin-bottom: 0.5rem; font-size: clamp(1.5rem, 5vw, 2.5rem);">Welcome back, <span id="userName"><?php echo htmlspecialchars($userName); ?></span>! 👋</h1>
                 <p style="opacity: 0.9;">Manage your rides and bookings here.</p>
             </div>
-            <div style="background: rgba(255,255,255,0.2); padding: 1rem 2rem; border-radius: var(--radius-md); text-align: center;">
+            <div style="background: rgba(255,255,255,0.2); padding: 1rem 2rem; border-radius: var(--radius-md); text-align: center; min-width: 120px;">
                 <div style="font-size: 2rem; font-weight: 700;"><?php echo $myRating; ?></div>
                 <div style="font-size: 0.8rem;">Rating</div>
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+        <div class="dashboard-grid">
             
-            <!-- Main Content: My RIdes -->
+            <!-- Main Content: My Rides -->
             <div>
-                <div class="search-card" style="margin-bottom: 2rem; display: block;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                        <h2 style="color: var(--text-dark);">My Published Rides</h2>
+                <div class="search-card" style="margin-bottom: 2rem; display: block; padding: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                        <h2 style="color: var(--text-dark); margin: 0;">My Published Rides</h2>
                         
                         <div style="display: flex; gap: 10px;">
                              <!-- Toggle Buttons -->
-                             <button id="btnViewActive" onclick="switchView('active')" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Active</button>
-                             <button id="btnViewHistory" onclick="switchView('history')" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.9rem;">History</button>
+                             <button id="btnViewActive" onclick="switchView('active')" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Active</button>
+                             <button id="btnViewHistory" onclick="switchView('history')" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.85rem;">History</button>
                              <a href="offer_ride.php" class="btn btn-outline" style="border-color: var(--primary-teal); color: var(--primary-teal); padding: 0.5rem 1rem;"><i class="fas fa-plus"></i></a>
                         </div>
                     </div>
@@ -156,7 +156,20 @@ $co2Saved = $ridesTaken * 2.5;
                             <?php endif; ?>
                         </div>
                         <h3 id="profileName"><?php echo htmlspecialchars($userName); ?></h3>
-                        <p id="profileEmail" style="color: var(--text-gray); margin-bottom: 1rem;"><?php echo htmlspecialchars($userEmail); ?></p>
+                        <p id="profileEmail" style="color: var(--text-gray); margin-bottom: 0.5rem;"><?php echo htmlspecialchars($userEmail); ?></p>
+                        
+                        <div style="margin-bottom: 1.5rem;">
+                            <?php if (($u['is_verified'] ?? 0) == 1): ?>
+                                <span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;">
+                                    <i class="fas fa-check-circle"></i> Verified
+                                </span>
+                            <?php else: ?>
+                                <span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;">
+                                    <i class="fas fa-clock"></i> Pending Verification
+                                </span>
+                            <?php endif; ?>
+                        </div>
+
                         <a href="edit_profile.php" class="btn btn-outline" style="font-size: 0.85rem; padding: 0.4rem 1rem;">Edit Profile</a>
                     </div>
                     
@@ -182,14 +195,14 @@ $co2Saved = $ridesTaken * 2.5;
     </div>
 
     <!-- Image Preview Modal (Structured Card) -->
-    <div id="imageModal" class="modal" style="display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(3px); align-items: center; justify-content: center;">
+    <div id="imageModal" class="modal" style="display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(3px); align-items: center; justify-content: center; padding: 1rem;">
         
         <!-- Modal Card -->
-        <div style="background: white; width: 650px; max-width: 95%; border-radius: 16px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); position: relative; display: flex; flex-direction: column;">
+        <div style="background: white; width: min(650px, 100%); border-radius: 16px; padding: clamp(1rem, 5vw, 2rem); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); position: relative; display: flex; flex-direction: column;">
             
             <!-- Header -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: #111827;">ID Proof Viewer</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                <h3 style="margin: 0; font-size: clamp(1rem, 4vw, 1.25rem); font-weight: 600; color: #111827;">ID Proof Viewer</h3>
                 <button onclick="document.getElementById('imageModal').style.display='none'" style="background: none; border: none; font-size: 1.5rem; color: #6b7280; cursor: pointer; padding: 0;">&times;</button>
             </div>
             
@@ -382,7 +395,7 @@ $co2Saved = $ridesTaken * 2.5;
                         } else if(isRideFinished || isMyReqFinished) {
                              statusBadge = '<span class="trip-badge" style="background:#d1fae5; color:#065f46;">Completed</span>';
                         } else if(req.status === 'accepted') {
-                             statusBadge = '<span class="trip-badge" style="background:#d1fae5; color:#065f46;">Accepted</span>';
+                             statusBadge = '<span class="trip-badge" style="background:#dbeafe; color:#1e40af;">Accepted</span>';
                         } else {
                              statusBadge = `<span class="trip-badge" style="background:#f3f4f6; color:#374151;">${req.status}</span>`;
                         }
@@ -391,8 +404,8 @@ $co2Saved = $ridesTaken * 2.5;
                         if (isRated) {
                             actionButtons = '<div style="margin-top:5px; font-size:0.8rem; color: #10b981;"><i class="fas fa-check"></i> Already Rated</div>';
                         } else {
-                             // Corrected Logic: Priority to Rating if finished
-                             if (isRideFinished || isMyReqFinished) {
+                             // Corrected Logic: Only show Rate Driver if the passenger themselves marked it completed
+                             if (isMyReqFinished && req.status === 'completed') {
                                 actionButtons = `<div style="margin-top:5px;">
                                     <a href="rate_ride.php?request_id=${req.request_id}" class="btn btn-primary" style="padding: 0.4rem 1rem; font-size: 0.9rem;">Rate Driver <i class="fas fa-star"></i></a>
                                 </div>`;
@@ -408,15 +421,17 @@ $co2Saved = $ridesTaken * 2.5;
                                     : `<span class="trip-badge" style="background:#f0fdf4; color:#166534; font-weight:600; padding:6px 12px; border-radius:10px;"><i class="fas fa-check-circle"></i> Paid</span>`;
 
                                 actionButtons = `
-                                    <div style="margin-top:5px; display:flex; flex-direction:column; align-items:flex-end; gap:5px;">
-                                        <a href="ride_details.php?id=${req.ride_id}" style="font-size:0.85rem; color:var(--primary-teal); font-weight:600; margin-bottom: 5px; text-decoration: underline;">Track Ride</a>
+                                    <div style="margin-top:10px; display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
                                         ${payBtn}
-                                        <div style="display:flex; gap:5px;">
-                                            <button onclick="cancelBooking(${req.request_id})" class="btn btn-outline" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-radius: 10px; border-color: var(--error-red); color: var(--error-red);">
-                                                Cancel
+                                        <div style="display:flex; gap:8px; flex-wrap: wrap; justify-content: flex-end;">
+                                            <a href="ride_details.php?id=${req.ride_id}" class="btn btn-primary" style="padding: 0.5rem 1.2rem; font-size: 0.85rem; border-radius: 10px; background: #3b82f6; border: none; text-decoration: none; color: white; display: flex; align-items: center; gap: 5px;">
+                                                <i class="fas fa-map-marker-alt"></i> Track Ride
+                                            </a>
+                                            <button onclick="confirmArrival(${req.request_id})" class="btn btn-primary" style="padding: 0.5rem 1.2rem; font-size: 0.85rem; border-radius: 10px; background: #10b981; border: none; color: white;">
+                                                <i class="fas fa-check"></i> End Trip
                                             </button>
-                                            <button onclick="confirmArrival(${req.request_id})" class="btn btn-outline" style="padding: 0.4rem 1rem; font-size: 0.85rem; border-radius: 10px; border-color: var(--primary-teal); color: var(--primary-teal);">
-                                                <i class="fas fa-check-circle"></i> End Trip & Rate
+                                            <button onclick="cancelBooking(${req.request_id})" class="btn btn-outline" style="padding: 0.5rem 1.2rem; font-size: 0.85rem; border-radius: 10px; border-color: var(--error-red); color: var(--error-red); background: transparent;">
+                                                Cancel
                                             </button>
                                         </div>
                                     </div>

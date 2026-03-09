@@ -28,7 +28,7 @@ if ($method === 'GET') {
                  AND ride_id IN (SELECT ride_id FROM rides WHERE status = 'completed')");
 
     $current_user_id = $_SESSION['user_id'] ?? 0;
-    $sql = "SELECT r.*, u.name as driver_name, u.rating, u.profile_pic, 
+    $sql = "SELECT r.*, u.name as driver_name, u.rating, u.profile_pic, u.is_verified, 
             (SELECT COUNT(*) FROM ride_requests WHERE ride_id = r.ride_id AND passenger_id = $current_user_id AND status != 'cancelled') as is_requested
             FROM rides r 
             JOIN users u ON r.driver_id = u.user_id 
@@ -117,7 +117,7 @@ if ($method === 'GET') {
     $ride_id = $_GET['ride_id'] ?? '';
     if (!empty($ride_id)) {
         // Reset SQL for ID lookup to find ANY trip type
-        $sql = "SELECT r.*, u.name as driver_name, u.rating, u.profile_pic,
+        $sql = "SELECT r.*, u.name as driver_name, u.rating, u.profile_pic, u.is_verified,
                 (SELECT COUNT(*) FROM ride_requests WHERE ride_id = r.ride_id AND passenger_id = $current_user_id AND status != 'cancelled') as is_requested
                 FROM rides r 
                 JOIN users u ON r.driver_id = u.user_id 
@@ -205,8 +205,7 @@ if ($method === 'GET') {
         $upd->bind_param("i", $ride_id);
         
         if($upd->execute()) {
-            // Also complete all accepted requests
-            $conn->query("UPDATE ride_requests SET status = 'completed' WHERE ride_id = $ride_id AND status = 'accepted'");
+            // No longer auto-completing requests; let passengers confirm arrival themselves
             echo json_encode(['success'=>true, 'message'=>'Ride completed']);
         } else {
             echo json_encode(['success'=>false, 'message'=>'Update failed']);

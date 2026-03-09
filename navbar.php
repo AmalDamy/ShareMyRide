@@ -82,11 +82,16 @@ if ($nav_user_id) {
     }
 </style>
 
-<nav class="navbar glass-nav" style="background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05); height: 75px; display: flex; align-items: center; position: fixed; top: 0; left: 0; width: 100%; z-index: 1000;">
-    <div class="container nav-content" style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 1.5rem;">
-        <a href="index.php" class="logo" style="color: #1e293b; font-weight: 800; font-size: 1.5rem; text-decoration: none; text-transform: none; letter-spacing: -0.5px;">Share<span style="color: var(--primary-teal, #0d9488);">MyRide</span></a>
+<nav class="navbar glass-nav">
+    <div class="container nav-content">
+        <a href="index.php" class="logo">Share<span style="color: var(--primary-teal, #0d9488);">MyRide</span></a>
         
-        <div class="nav-links" style="display: flex; align-items: center; gap: 20px;">
+        <!-- Mobile Menu Toggle -->
+        <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <div class="nav-links" id="navLinks">
             <a href="dashboard.php" class="nav-link-item">Dashboard</a>
             <a href="find_ride.php" class="nav-link-item">Find Ride</a>
             <a href="offer_ride.php" class="nav-link-item">Offer Ride</a>
@@ -95,28 +100,29 @@ if ($nav_user_id) {
                 
                 <!-- Notification Bell -->
                 <div class="nav-item" style="position: relative; cursor: pointer;" id="notifDropdownToggle" onclick="toggleNotifDropdown()">
-                    <i class="fas fa-bell" style="font-size: 1.2rem; color: #64748b; transition: color 0.2s;"></i>
+                    <i class="fas fa-bell" style="font-size: 1.2rem; color: #64748b;"></i>
                     <span id="navNotifCount" style="display: none; position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; font-size: 0.65rem; font-weight: bold; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">0</span>
                     
                     <!-- Notification Dropdown -->
-                    <div id="notifDropdown" style="display: none; position: absolute; top: 150%; right: -50px; width: 320px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; overflow: hidden; z-index: 1001; animation: fadeUp 0.2s ease;">
+                    <div id="notifDropdown" style="display: none; position: absolute; top: 150%; right: -50px; width: 320px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; overflow: hidden; z-index: 1001;">
                         <div style="padding: 1rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
                             <h4 style="margin: 0; font-size: 0.95rem; color: #1e293b;">Notifications</h4>
                             <button onclick="markAllNotificationsRead(event)" style="background:none; border:none; color: var(--primary-teal, #0d9488); font-size: 0.8rem; cursor: pointer; font-weight: 600;">Mark all read</button>
                         </div>
                         <div id="notifList" style="max-height: 350px; overflow-y: auto; padding: 0.5rem 0;">
-                            <!-- Notifications will be loaded here -->
                             <div style="padding: 1rem; text-align: center; color: #94a3b8; font-size: 0.9rem;">Loading...</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- User Pill Button -->
-                <a href="edit_profile.php" class="user-nav-pill">
-                    <img src="<?php echo htmlspecialchars($nav_profile_pic); ?>" class="user-nav-avatar">
-                    <span class="user-nav-name"><?php echo htmlspecialchars($nav_display_name); ?></span>
-                </a>
-                <a href="logout.php" style="color: #ef4444; font-size: 1.2rem; margin-left: 5px;" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <a href="edit_profile.php" class="user-nav-pill">
+                        <img src="<?php echo htmlspecialchars($nav_profile_pic); ?>" class="user-nav-avatar">
+                        <span class="user-nav-name"><?php echo htmlspecialchars($nav_display_name); ?></span>
+                    </a>
+                    <a href="logout.php" style="color: #ef4444; font-size: 1.2rem;" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
+                </div>
             <?php else: ?>
                 <a href="login.php" class="btn btn-primary" style="padding: 0.5rem 1.5rem; border-radius: 50px;">Login</a>
             <?php endif; ?>
@@ -127,6 +133,36 @@ if ($nav_user_id) {
 <!-- Spacer to prevent content from going under the fixed navbar -->
 <div style="height: 75px;"></div>
 
+<script>
+    // Universal functions (work even if logged out)
+    function toggleMobileMenu() {
+        const navLinks = document.getElementById('navLinks');
+        if (navLinks) {
+            navLinks.classList.toggle('active');
+        }
+    }
+
+    // Global click listener for closing menu when clicking outside
+    document.addEventListener('click', function(event) {
+        const navLinks = document.getElementById('navLinks');
+        const menuBtn = document.querySelector('.mobile-menu-btn');
+        
+        if (navLinks && navLinks.classList.contains('active')) {
+            // If click is NOT on menu and NOT on toggle button
+            if (!navLinks.contains(event.target) && !menuBtn.contains(event.target)) {
+                navLinks.classList.remove('active');
+            }
+        }
+
+        // Close notification dropdown if exists
+        const dropdown = document.getElementById('notifDropdown');
+        const toggle = document.getElementById('notifDropdownToggle');
+        if (dropdown && toggle && !toggle.contains(event.target) && !dropdown.contains(event.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+</script>
+
 <?php if ($nav_user_id): ?>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -134,15 +170,6 @@ if ($nav_user_id) {
         
         // Fetch new notifications every 30 seconds
         setInterval(loadNavNotifications, 30000);
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(event) {
-            const dropdown = document.getElementById('notifDropdown');
-            const toggle = document.getElementById('notifDropdownToggle');
-            if (dropdown && toggle && !toggle.contains(event.target)) {
-                dropdown.style.display = 'none';
-            }
-        });
     });
 
     function toggleNotifDropdown() {
