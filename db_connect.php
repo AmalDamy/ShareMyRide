@@ -3,12 +3,10 @@ $servername = getenv('DB_HOST') ?: "127.0.0.1";
 $username   = getenv('DB_USER') ?: "root";
 $password   = getenv('DB_PASS') ?: "";
 $dbname     = getenv('DB_NAME') ?: "sharemyride";
+$dbport     = getenv('DB_PORT') ?: 3306;
 
-// Force SSL connection for Azure MySQL if in production
-$is_production = getenv('DB_HOST') !== false && getenv('DB_HOST') !== "127.0.0.1";
-
-// Create connection (without selecting DB first)
-$conn = new mysqli($servername, $username, $password);
+// Create connection (using port for Aiven compatibility)
+$conn = new mysqli($servername, $username, $password, $dbname, $dbport);
 
 // Check connection
 if ($conn->connect_error) {
@@ -18,11 +16,8 @@ if ($conn->connect_error) {
     ]));
 }
 
-// Create database if not exists
-$conn->query("CREATE DATABASE IF NOT EXISTS `$dbname` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci");
-
-// Select the database
-$conn->select_db($dbname);
+// Skip manual DB selection if using Aiven (already selected in mysqli constructor)
+// $conn->select_db($dbname);
 
 // Set charset to UTF-8
 $conn->set_charset("utf8mb4");
