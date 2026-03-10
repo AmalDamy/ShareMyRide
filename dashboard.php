@@ -69,29 +69,29 @@ $co2Saved = $ridesTaken * 2.5;
     <div class="container" style="padding-top: 2rem;">
         
         <!-- Welcome Header -->
-        <div class="welcome-banner" style="background: linear-gradient(135deg, var(--dark-teal), var(--primary-teal)); color: white; padding: 3rem; border-radius: var(--radius-lg); margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: center;">
+        <div style="background: linear-gradient(135deg, var(--dark-teal), var(--primary-teal)); color: white; padding: 3rem; border-radius: var(--radius-lg); margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <h1 style="margin-bottom: 0.5rem; font-size: clamp(1.5rem, 5vw, 2.5rem);">Welcome back, <span id="userName"><?php echo htmlspecialchars($userName); ?></span>! 👋</h1>
+                <h1 style="margin-bottom: 0.5rem;">Welcome back, <span id="userName"><?php echo htmlspecialchars($userName); ?></span>! 👋</h1>
                 <p style="opacity: 0.9;">Manage your rides and bookings here.</p>
             </div>
-            <div style="background: rgba(255,255,255,0.2); padding: 1rem 2rem; border-radius: var(--radius-md); text-align: center; min-width: 120px;">
+            <div style="background: rgba(255,255,255,0.2); padding: 1rem 2rem; border-radius: var(--radius-md); text-align: center;">
                 <div style="font-size: 2rem; font-weight: 700;"><?php echo $myRating; ?></div>
                 <div style="font-size: 0.8rem;">Rating</div>
             </div>
         </div>
 
-        <div class="dashboard-grid">
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
             
-            <!-- Main Content: My Rides -->
+            <!-- Main Content: My RIdes -->
             <div>
-                <div class="search-card" style="margin-bottom: 2rem; display: block; padding: 1.5rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                        <h2 style="color: var(--text-dark); margin: 0;">My Published Rides</h2>
+                <div class="search-card" style="margin-bottom: 2rem; display: block;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2 style="color: var(--text-dark);">My Published Rides</h2>
                         
                         <div style="display: flex; gap: 10px;">
                              <!-- Toggle Buttons -->
-                             <button id="btnViewActive" onclick="switchView('active')" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Active</button>
-                             <button id="btnViewHistory" onclick="switchView('history')" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.85rem;">History</button>
+                             <button id="btnViewActive" onclick="switchView('active')" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Active</button>
+                             <button id="btnViewHistory" onclick="switchView('history')" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.9rem;">History</button>
                              <a href="offer_ride.php" class="btn btn-outline" style="border-color: var(--primary-teal); color: var(--primary-teal); padding: 0.5rem 1rem;"><i class="fas fa-plus"></i></a>
                         </div>
                     </div>
@@ -195,14 +195,14 @@ $co2Saved = $ridesTaken * 2.5;
     </div>
 
     <!-- Image Preview Modal (Structured Card) -->
-    <div id="imageModal" class="modal" style="display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(3px); align-items: center; justify-content: center; padding: 1rem;">
+    <div id="imageModal" class="modal" style="display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(3px); align-items: center; justify-content: center;">
         
         <!-- Modal Card -->
-        <div style="background: white; width: min(650px, 100%); border-radius: 16px; padding: clamp(1rem, 5vw, 2rem); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); position: relative; display: flex; flex-direction: column;">
+        <div style="background: white; width: 650px; max-width: 95%; border-radius: 16px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); position: relative; display: flex; flex-direction: column;">
             
             <!-- Header -->
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
-                <h3 style="margin: 0; font-size: clamp(1rem, 4vw, 1.25rem); font-weight: 600; color: #111827;">ID Proof Viewer</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: #111827;">ID Proof Viewer</h3>
                 <button onclick="document.getElementById('imageModal').style.display='none'" style="background: none; border: none; font-size: 1.5rem; color: #6b7280; cursor: pointer; padding: 0;">&times;</button>
             </div>
             

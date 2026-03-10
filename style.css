@@ -186,10 +186,6 @@ ul {
     align-items: center;
 }
 
-.mobile-menu-btn {
-    display: none;
-}
-
 .logo {
     font-size: 1.5rem;
     font-weight: 700;
@@ -579,198 +575,222 @@ ul {
     font-size: 0.875rem;
 }
 
-/* === PREMIUM BREATHABLE RESPONSIVE SYSTEM === */
-
+/* Responsive */
 @media (max-width: 768px) {
-
-    /* Global Spacing Reset for Mobile */
-    :root {
-        --radius-lg: 0.75rem;
-        /* Slightly smaller radius for mobile for more space */
-    }
-
-    .container {
-        padding: 0 1rem;
-        /* More compact container padding */
-    }
-
-    /* Typography Scaling */
-    h1 {
-        font-size: 1.75rem !important;
-        line-height: 1.2;
-    }
-
-    h2 {
-        font-size: 1.4rem !important;
-    }
-
-    h3 {
-        font-size: 1.15rem !important;
-    }
-
-    p {
-        font-size: 0.9rem !important;
-    }
-
-    /* Dashboard Layout */
-    .dashboard-grid {
-        grid-template-columns: 1fr;
-        gap: 1.25rem;
-        /* Reduced gap but kept breathable */
-    }
-
-    .welcome-banner {
-        padding: 1.5rem !important;
-        flex-direction: column;
+    .hero-content {
+        flex-direction: column-reverse;
         text-align: center;
-        gap: 1rem;
-        margin-bottom: 1.5rem !important;
     }
 
-    /* Card Breathability */
-    .search-card,
-    .trip-card,
-    .calculator-card {
-        padding: 1.25rem !important;
-        margin-bottom: 1rem !important;
-        border-radius: var(--radius-lg);
-    }
-
-    /* List Items & Badges */
-    .trip-badge {
-        padding: 0.2rem 0.6rem;
-        font-size: 0.7rem;
-    }
-
-    /* Form Spacing */
-    .form-group {
-        margin-bottom: 0.75rem;
-    }
-
-    form {
-        gap: 0.75rem !important;
-    }
-
-    /* Buttons spacing */
-    .btn {
-        padding: 0.75rem 1.25rem;
-        font-size: 0.9rem;
-        width: 100%;
-        /* Force full width for better touch targets */
+    .hero-text {
+        max-width: 100%;
     }
 
     .hero-buttons {
-        flex-direction: column;
-        gap: 0.75rem;
+        justify-content: center;
     }
 
-    /* Navigation - Fix Centered/Floating Layout */
-    .mobile-menu-btn {
-        display: block !important;
-        font-size: 1.5rem;
-        color: var(--text-dark);
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 0.5rem;
+    .hero-title {
+        font-size: 2.5rem;
+    }
+
+    .search-card {
+        flex-direction: column;
+        align-items: stretch;
     }
 
     .nav-links {
-        display: none !important;
-        /* Hidden by default */
+        display: none;
         position: absolute;
         top: 100%;
         left: 0;
         right: 0;
         background: var(--white);
-        flex-direction: column !important;
-        padding: 1.5rem !important;
-        box-shadow: var(--shadow-xl);
-        border-top: 1px solid #f1f5f9;
-        gap: 1.25rem !important;
-        align-items: flex-start !important;
-        /* Left align for professional look */
-        z-index: 1000;
+        flex-direction: column;
+        padding: 1rem;
+        box-shadow: var(--shadow-lg);
+        gap: 0.5rem;
     }
 
-    .nav-links.active {
-        display: flex !important;
-        /* Show when toggled */
+    .nav-links.show {
+        display: flex;
     }
 
-    .nav-link-item {
-        width: 100%;
-        padding: 0.75rem 0;
-        border-bottom: 1px solid #f8fafc;
+    .mobile-menu-toggle {
         display: block;
-        font-size: 1rem;
-    }
-
-    .user-nav-pill {
-        width: 100%;
-        justify-content: flex-start;
-        background: #f8fafc;
-    }
-
-    /* List Item Spacing */
-    #myRidesList>div,
-    #myBookingsList>div,
-    #incomingRequestsList>div {
-        margin-bottom: 0.75rem !important;
-    }
-
-    /* Icon sizes */
-    .feature-icon {
-        width: 40px;
-        height: 40px;
-        font-size: 1.25rem;
     }
 }
 
-@media (max-width: 480px) {
-    .container {
-        padding: 0 0.75rem;
-    }
+/* === NEW UTILITY STYLES === */
 
-    .welcome-banner {
-        padding: 1rem !important;
-    }
-
-    .trip-card {
-        padding: 1rem !important;
-    }
-
-    /* Special fix for "Stats" section on mobile */
-    .stats-item {
-        font-size: 0.8rem;
-    }
+/* Validation Styles */
+.error-message {
+    color: var(--error-red);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    display: none;
 }
 
-/* --- Helper Spacing Classes --- */
-.mobile-mb-1 {
-    margin-bottom: 0.5rem;
+.error-message.show {
+    display: block;
 }
 
-.mobile-mb-2 {
+.form-input.error,
+.input-error {
+    border-color: var(--error-red) !important;
+    background-color: #fef2f2;
+}
+
+.form-input.success {
+    border-color: var(--success-green);
+}
+
+.success-message {
+    background-color: #d1fae5;
+    color: #065f46;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--success-green);
     margin-bottom: 1rem;
 }
 
-.mobile-p-1 {
+.error-banner {
+    background-color: #fee2e2;
+    color: #991b1b;
     padding: 1rem;
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--error-red);
+    margin-bottom: 1rem;
 }
 
-/* === END RESPONSIVE SYSTEM === */
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
 
-/* Existing components modified for responsiveness */
-.trip-badge {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Language Selector */
+.lang-selector {
+    position: relative;
     display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: var(--radius-full);
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
 }
 
+.lang-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-gray);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.lang-btn:hover {
+    color: var(--primary-teal);
+}
+
+.lang-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: var(--white);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    min-width: 150px;
+    display: none;
+    z-index: 1000;
+    margin-top: 0.5rem;
+}
+
+.lang-dropdown.show {
+    display: block;
+}
+
+.lang-option {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.lang-option:hover {
+    background: var(--light-teal);
+}
+
+.lang-option.active {
+    background: var(--primary-teal);
+    color: var(--white);
+}
+
+/* Mobile Menu */
+.mobile-menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-dark);
+    cursor: pointer;
+}
+
+/* Calculator */
+.calculator-card {
+    background: var(--white);
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    margin-bottom: 2rem;
+}
+
+.calc-result {
+    background: linear-gradient(135deg, var(--primary-teal), var(--dark-teal));
+    color: var(--white);
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+    text-align: center;
+}
+
+.calc-result-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0.5rem 0;
+}
+
+/* Contact Form */
+.contact-info-card {
+    background: var(--light-teal);
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.contact-info-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--primary-teal);
+    color: var(--white);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Trip Cards */
 .trip-card {
     background: var(--white);
     border-radius: var(--radius-lg);
@@ -783,4 +803,43 @@ ul {
 .trip-card:hover {
     box-shadow: var(--shadow-md);
     transform: translateY(-2px);
+}
+
+.trip-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.trip-badge.upcoming {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+/* Utilities */
+.mt-2 {
+    margin-top: 1rem;
+}
+
+.mb-2 {
+    margin-bottom: 1rem;
+}
+
+.text-sm {
+    font-size: 0.875rem;
+}
+
+.font-bold {
+    font-weight: 700;
+}
+
+.w-full {
+    width: 100%;
+}
+
+.hidden {
+    display: none;
 }

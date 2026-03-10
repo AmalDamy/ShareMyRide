@@ -26,25 +26,25 @@ if (!isset($_SESSION['user_id'])) {
     <div class="container" style="padding-top: 6rem;">
         
         <!-- Search Bar (Compact) -->
-        <div class="search-card" style="padding: 1.5rem; margin-bottom: 2rem; box-shadow: var(--shadow-sm); border: 1px solid #eee;">
-            <form action="find_ride.php" method="GET" style="display: flex; gap: 1rem; width: 100%; align-items: flex-end; flex-wrap: wrap;" onsubmit="return validateSearch()">
-                <div class="form-group" style="flex: 1; min-width: 200px;">
+        <div class="search-card" style="padding: 1rem 1.5rem; margin-bottom: 2rem; box-shadow: var(--shadow-sm); border: 1px solid #eee;">
+            <form action="find_ride.php" method="GET" style="display: flex; gap: 1rem; width: 100%; align-items: flex-end;" onsubmit="return validateSearch()">
+                <div class="form-group">
                     <label>From</label>
-                    <input type="text" name="from" id="searchFrom" class="form-input" style="width: 100%;" placeholder="Leaving from..." value="<?php echo isset($_GET['from']) ? htmlspecialchars($_GET['from']) : ''; ?>">
+                    <input type="text" name="from" id="searchFrom" class="form-input" placeholder="Leaving from..." value="<?php echo isset($_GET['from']) ? htmlspecialchars($_GET['from']) : ''; ?>">
                 </div>
-                <div class="form-group" style="flex: 1; min-width: 200px;">
+                <div class="form-group">
                     <label>To</label>
-                    <input type="text" name="to" id="searchTo" class="form-input" style="width: 100%;" placeholder="Going to..." value="<?php echo isset($_GET['to']) ? htmlspecialchars($_GET['to']) : ''; ?>">
+                    <input type="text" name="to" id="searchTo" class="form-input" placeholder="Going to..." value="<?php echo isset($_GET['to']) ? htmlspecialchars($_GET['to']) : ''; ?>">
                 </div>
-                <div class="form-group" style="flex: 1; min-width: 150px;">
+                <div class="form-group">
                     <label>Date</label>
-                    <input type="date" name="date" id="searchDate" class="form-input" style="width: 100%;" value="<?php echo isset($_GET['date']) ? htmlspecialchars($_GET['date']) : ''; ?>">
+                    <input type="date" name="date" id="searchDate" class="form-input" value="<?php echo isset($_GET['date']) ? htmlspecialchars($_GET['date']) : ''; ?>">
                 </div>
                 <?php if (isset($_GET['show_self'])): ?>
                 <input type="hidden" name="show_self" value="<?php echo htmlspecialchars($_GET['show_self']); ?>">
                 <?php endif; ?>
-                <div class="search-btn-wrapper" style="flex: 0 0 auto; width: 100%; max-width: 200px;">
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">Update Search</button>
+                <div class="search-btn-wrapper">
+                    <button type="submit" class="btn btn-primary">Update Search</button>
                 </div>
             </form>
         </div>

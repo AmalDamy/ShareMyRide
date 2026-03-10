@@ -244,63 +244,6 @@ if (isset($_SESSION['user_id'])) {
         input:focus {
             background-color: #e2e8f0;
         }
-
-        /* Responsive Fixes */
-        @media (max-width: 768px) {
-            body {
-                height: auto;
-                min-height: 100vh;
-                padding: 20px 0;
-            }
-            .container {
-                width: 95%;
-                min-height: auto;
-                display: flex;
-                flex-direction: column;
-            }
-            .form-container {
-                position: relative;
-                width: 100% !important;
-                height: auto;
-                transform: none !important;
-            }
-            .sign-in-container {
-                display: block;
-                padding: 40px 0;
-            }
-            .sign-up-container {
-                display: none; /* We will use JS to toggle or just show sign-in first */
-                padding: 40px 0;
-                opacity: 1 !important;
-                z-index: 2;
-            }
-            .container.right-panel-active .sign-in-container {
-                display: none;
-            }
-            .container.right-panel-active .sign-up-container {
-                display: block;
-            }
-            .overlay-container {
-                display: none;
-            }
-            
-            /* Mobile Toggle */
-            .mobile-auth-toggle {
-                display: block !important;
-                margin-top: 20px;
-                color: var(--primary);
-                font-weight: 600;
-                cursor: pointer;
-            }
-            
-            form {
-                padding: 0 20px;
-            }
-        }
-        
-        .mobile-auth-toggle {
-            display: none;
-        }
         
         .back-link {
             position: absolute;
@@ -379,9 +322,7 @@ if (isset($_SESSION['user_id'])) {
                 
                 <button type="submit">Sign Up</button>
                 
-                <div class="mobile-auth-toggle">
-                    Already have an account? <span onclick="toggleMobile('signIn')">Sign In</span>
-                </div>
+                <p style="margin-top: 2rem; display: none;" class="mobile-toggle">Already have an account? <a href="#" onclick="toggleMobile('signIn')">Sign In</a></p>
             </form>
         </div>
 
@@ -391,6 +332,7 @@ if (isset($_SESSION['user_id'])) {
                 <h1 style="margin-bottom: 1rem;">Sign in</h1>
                 
                 <div id="google_btn_login" style="margin-bottom: 15px; height: 44px;"></div>
+                <!-- Signup form also uses this ID pattern? No, IDs must be unique. Let's handle both. -->
                 
                 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
@@ -398,11 +340,15 @@ if (isset($_SESSION['user_id'])) {
                 
                 <div id="login-alert" class="alert-box alert-error"></div>
                 
-                <input type="hidden" id="selected-role" value="user"> 
+                <input type="hidden" id="selected-role" value="user"> <!-- Defaulting to user for simpler UI -->
 
-                <input type="email" id="loginEmail" placeholder="Email" required />
-                <input type="password" id="loginPass" placeholder="Password" required />
-                <a href="forgot_password.php" style="color: var(--primary); font-weight: 500;">Forgot your password?</a>
+                <!-- Fake inputs to trick browser autowill -->
+                <input type="text" style="display:none">
+                <input type="password" style="display:none">
+
+                <input type="email" id="loginEmail" placeholder="Email" oninput="validateLoginLive('loginEmail')" required autocomplete="off" />
+                <input type="password" id="loginPass" placeholder="Password" oninput="validateLoginLive('loginPass')" required autocomplete="new-password" />
+                <a href="forgot_password.php" style="font-size: 0.8rem; margin: 10px 0;">Forgot your password?</a>
                 
                 <button type="submit">Sign In</button>
 
@@ -441,16 +387,26 @@ if (isset($_SESSION['user_id'])) {
             container.classList.remove("right-panel-active");
         });
 
-        // Mobile Responsive Logic for desktop-like behavior on mobile
-        function toggleMobile(mode) {
-            if (mode === 'signUp') {
-                container.classList.add("right-panel-active");
+        // URL Params Logic moved to window.onload below
+
+        // Mobile Responsive Logic
+        function toggleMobile(target) {
+            if(target === 'signUp') {
+                document.querySelector('.sign-in-container').style.opacity = '0';
+                document.querySelector('.sign-in-container').style.zIndex = '0';
+                document.querySelector('.sign-up-container').style.opacity = '1';
+                document.querySelector('.sign-up-container').style.zIndex = '5';
             } else {
-                container.classList.remove("right-panel-active");
+                document.querySelector('.sign-up-container').style.opacity = '0';
+                document.querySelector('.sign-up-container').style.zIndex = '0';
+                document.querySelector('.sign-in-container').style.opacity = '1';
+                document.querySelector('.sign-in-container').style.zIndex = '5';
             }
         }
 
-        // Live Validation and UI Helpers below...
+        if (window.innerWidth <= 768) {
+             document.querySelectorAll('.mobile-toggle').forEach(el => el.style.display = 'block');
+        }
 
         // LIVE VALIDATION HELPERS
         function validateSignupLive(fieldId) {
